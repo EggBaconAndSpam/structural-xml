@@ -1,0 +1,50 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           structural-xml
+version:        0.1.0.0
+description:    Structural parsing and generation of XML data.
+author:         Federik Ramcke <frederik.ramcke@eirforsakring.se>
+maintainer:     Federik Ramcke <frederik.ramcke@eirforsakring.se>
+copyright:      (c) 2022 Frederik Ramcke, Eir Försäkring AB
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+
+library
+  exposed-modules:
+      Data.XML
+      Data.XML.Deserialisation
+      Data.XML.Helpers.ContentElement
+      Data.XML.Helpers.QuotedXML
+      Data.XML.Serialisation
+      Data.XML.Types
+  other-modules:
+      Paths_structural_xml
+  hs-source-dirs:
+      src
+  default-extensions:
+      DeriveGeneric
+      DeriveAnyClass
+      DerivingStrategies
+      DerivingVia
+      FlexibleContexts
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      RankNTypes
+      ScopedTypeVariables
+      StandaloneDeriving
+      TypeApplications
+      RecordWildCards
+  ghc-options: -Weverything -Wno-missing-import-lists -Wno-implicit-prelude -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-missing-safe-haskell-mode -Wno-prepositive-qualified-module -Wno-all-missed-specialisations
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , mtl
+    , text
+    , xml-conduit
+  default-language: Haskell2010
