@@ -11,6 +11,7 @@ module Data.XML.Deserialisation
     parseContentElement,
     readContent,
     throwParserError,
+    fromElement',
   )
 where
 
@@ -38,6 +39,9 @@ class FromDocument a where
 
 class FromElement a where
   fromElement :: HasCallStack => Element -> Either ParserError a
+
+fromElement' :: FromElement a => Element -> Maybe a
+fromElement' = either (const Nothing) Just . fromElement
 
 -- | Textual 'content' appears either inside elements, e.g.
 --
