@@ -7,8 +7,8 @@ cabal-version: 1.12
 name:           structural-xml
 version:        0.1.0.0
 description:    Structural parsing and generation of XML data.
-author:         Federik Ramcke <frederik.ramcke@eirforsakring.se>
-maintainer:     Federik Ramcke <frederik.ramcke@eirforsakring.se>
+author:         Frederik Ramcke <frederik.ramcke@eirforsakring.se>
+maintainer:     Frederik Ramcke <frederik.ramcke@eirforsakring.se>
 copyright:      (c) 2022 Frederik Ramcke, Eir Försäkring AB
 license:        BSD3
 license-file:   LICENSE
@@ -18,7 +18,15 @@ library
   exposed-modules:
       Data.XML
       Data.XML.Deserialisation
+      Data.XML.Generics.Example
+      Data.XML.Generics.NamedSum
+      Data.XML.Generics.Options
+      Data.XML.Generics.Record
+      Data.XML.Generics.ResolveLabel
+      Data.XML.Generics.Shape
+      Data.XML.Generics.Sum
       Data.XML.Helpers.ContentElement
+      Data.XML.Helpers.Generically
       Data.XML.Helpers.QuotedXML
       Data.XML.Serialisation
       Data.XML.Types
@@ -27,7 +35,15 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      DataKinds
+      PolyKinds
+      TypeOperators
+      TypeFamilies
+      GADTs
+      FlexibleInstances
+      MultiParamTypeClasses
       DeriveGeneric
+      NamedFieldPuns
       DeriveAnyClass
       DerivingStrategies
       DerivingVia
@@ -44,6 +60,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , generics-sop
     , mtl
     , text
     , xml-conduit

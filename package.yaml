@@ -4,7 +4,7 @@ description:         Structural parsing and generation of XML data.
 license:             BSD3
 license-file:        LICENSE
 copyright:           (c) 2022 Frederik Ramcke, Eir Försäkring AB
-author:              Federik Ramcke <frederik.ramcke@eirforsakring.se>
+author:              Frederik Ramcke <frederik.ramcke@eirforsakring.se>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -12,9 +12,18 @@ dependencies:
 - text
 - xml-conduit
 - mtl
+- generics-sop
 
 default-extensions:
+- DataKinds
+- PolyKinds
+- TypeOperators
+- TypeFamilies
+- GADTs
+- FlexibleInstances
+- MultiParamTypeClasses
 - DeriveGeneric
+- NamedFieldPuns
 - DeriveAnyClass
 - DerivingStrategies
 - DerivingVia
