@@ -168,8 +168,9 @@ parseUnorderedElement (UnorderedElementParser p) el = case runStateT p (stripWhi
       then Right a
       else throwParserError "element not fully consumed" -- todo: better error messages? include unparsed remainder
 
--- | Expects an element consisting of a single content node. Fails if attributes
--- aren't fully consumed.
+-- | Expects an element consisting of a single content node or no child nodes
+-- (which is treated as an empty content string). Fails if attributes aren't
+-- fully consumed.
 parseContentElement ::
   (forall m. (AttributeConsumer m, MonadError ParserError m) => Text -> m a) ->
   Element ->
@@ -177,7 +178,7 @@ parseContentElement ::
 parseContentElement p el = do
   content <- case children el of
     [NodeContent c] -> pure c
-    [] -> throwParserError "Empty content element."
+    [] -> pure ""
     _ -> throwParserError "Content element must contain exactly one content node and no child elements."
   let ContentParser p' = p content
   case runStateT p' (el {children = []}) of
