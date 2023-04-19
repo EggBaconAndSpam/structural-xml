@@ -27,6 +27,10 @@ default-extensions:
 - StandaloneDeriving
 - TypeApplications
 - RecordWildCards
+- StrictData
+- DuplicateRecordFields
+- FlexibleInstances
+- NamedFieldPuns
 
 ghc-options:
 - -Weverything

@@ -29,13 +29,23 @@ data Element = Element
   }
   deriving stock (Show, Eq, Ord)
 
-emptyElement :: Element
-emptyElement = Element mempty []
-
 data Node
   = NodeElement Name Element
   | NodeContent Text
   deriving stock (Show, Eq, Ord)
+
+instance Semigroup Element where
+  el <> el' =
+    Element
+      { attributes = attributes el <> attributes el',
+        children = children el <> children el'
+      }
+
+instance Monoid Element where
+  mempty = emptyElement
+
+emptyElement :: Element
+emptyElement = Element mempty []
 
 {- Conversion from and to xml-conduit -}
 fromXmlConduit :: XC.Document -> Document
