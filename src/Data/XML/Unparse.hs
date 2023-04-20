@@ -58,19 +58,19 @@ constructElement (ConstructM c) =
 
 appendContent :: Text -> ConstructM ()
 appendContent text = ConstructM . modify $ \Element {..} ->
-  Element {children = NodeContent text : children, ..}
+  Element {children = NodeContent text () : children, ..}
 
 appendElement :: ToElement a => Name -> a -> ConstructM ()
 appendElement name a = ConstructM . modify $ \Element {..} ->
-  Element {children = NodeElement name (toElement a) : children, ..}
+  Element {children = NodeElement name (toElement a) () : children, ..}
 
 appendElementOrEmpty :: ToElement a => Name -> Maybe a -> ConstructM ()
 appendElementOrEmpty name ma = ConstructM . modify $ \Element {..} ->
-  Element {children = NodeElement name (maybe emptyElement toElement ma) : children, ..}
+  Element {children = NodeElement name (maybe emptyElement toElement ma) () : children, ..}
 
 addAttribute :: ToContent a => Name -> a -> ConstructM ()
 addAttribute name a = ConstructM . modify $ \Element {..} ->
-  Element {attributes = Map.insert name (toContent a) attributes, ..}
+  Element {attributes = Map.insert name (toContent a, ()) attributes, ..}
 
 {- Instances -}
 
@@ -87,7 +87,8 @@ instance ToContent a => ToElement (ContentElement a) where
   toElement (ContentElement a) =
     Element
       { attributes = Map.empty,
-        children = [NodeContent $ toContent a]
+        children = [NodeContent (toContent a) ()],
+        info = ()
       }
 
 deriving via ContentElement Text instance ToElement Text
