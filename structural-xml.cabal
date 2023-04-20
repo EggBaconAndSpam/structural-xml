@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -17,11 +17,11 @@ build-type:     Simple
 library
   exposed-modules:
       Data.XML
-      Data.XML.Deserialisation
-      Data.XML.Helpers.ContentElement
-      Data.XML.Helpers.QuotedXML
-      Data.XML.Serialisation
+      Data.XML.Parse.Ordered
+      Data.XML.Parse.Types
+      Data.XML.Parse.Unordered
       Data.XML.Types
+      Data.XML.Unparse
   other-modules:
       Paths_structural_xml
   hs-source-dirs:
@@ -40,6 +40,10 @@ library
       StandaloneDeriving
       TypeApplications
       RecordWildCards
+      StrictData
+      DuplicateRecordFields
+      FlexibleInstances
+      NamedFieldPuns
   ghc-options: -Weverything -Wno-missing-import-lists -Wno-implicit-prelude -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-missing-safe-haskell-mode -Wno-prepositive-qualified-module -Wno-all-missed-specialisations
   build-depends:
       base >=4.7 && <5
