@@ -1,4 +1,21 @@
-module Data.XML.Unparse where
+module Data.XML.Unparse
+  ( -- * classes
+    ToDocument (..),
+    ToElement (..),
+    ToContent (..),
+    ToChoiceElement (..),
+
+    -- * A monad for constructing elements
+    ConstructM (..),
+    constructElement,
+
+    -- * combinators
+    appendContent,
+    appendElement,
+    appendElementOrEmpty,
+    addAttribute,
+  )
+where
 
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as Map

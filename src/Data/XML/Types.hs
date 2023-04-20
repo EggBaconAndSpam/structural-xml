@@ -1,4 +1,35 @@
-module Data.XML.Types where
+module Data.XML.Types
+  ( -- * Unannotated types
+    Document,
+    Element,
+    emptyElement,
+    Node,
+
+    -- * Annotated types (for better parser errors)
+    AnnotatedDocument (..),
+    isEmptyElement,
+    AnnotatedElement (..),
+    AnnotatedNode (..),
+    unAnnotateDocument,
+    unAnnotateElement,
+
+    -- * Conversion to/from xml-conduit types
+    fromXmlConduit,
+    fromXmlConduitKeepWhitespaceContent,
+    fromXmlConduitElement,
+    toXmlConduit,
+    toXmlConduitElement,
+
+    -- * helpers
+    renderName,
+    stripAllWhitespaceContent,
+    stripWhitespaceContent,
+
+    -- * newtype wrappers
+    ContentElement (..),
+    OrEmpty (..),
+  )
+where
 
 import Data.Char (isSpace)
 import qualified Data.Map as Map
@@ -88,10 +119,10 @@ unAnnotateElement Element {..} =
 -- | Strips whitespace content since we don't usually care about that. If you
 -- want a lossless conversion instead use fromXmlConduitKeepWhitespaceElements.
 fromXmlConduit :: XC.Document -> Document
-fromXmlConduit = stripAllWhitespaceContent . fromXmlConduitKeepWhitespaceElements
+fromXmlConduit = stripAllWhitespaceContent . fromXmlConduitKeepWhitespaceContent
 
-fromXmlConduitKeepWhitespaceElements :: XC.Document -> Document
-fromXmlConduitKeepWhitespaceElements doc =
+fromXmlConduitKeepWhitespaceContent :: XC.Document -> Document
+fromXmlConduitKeepWhitespaceContent doc =
   Document
     { rootName = XC.elementName $ XC.documentRoot doc,
       root = fromXmlConduitElement $ XC.documentRoot doc,
