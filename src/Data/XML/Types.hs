@@ -88,7 +88,7 @@ unAnnotateElement Element {..} =
 -- | Strips whitespace content since we don't usually care about that. If you
 -- want a lossless conversion instead use fromXmlConduitKeepWhitespaceElements.
 fromXmlConduit :: XC.Document -> Document
-fromXmlConduit = undefined {-stripAllWhitespaceContent-} . fromXmlConduitKeepWhitespaceElements
+fromXmlConduit = stripAllWhitespaceContent . fromXmlConduitKeepWhitespaceElements
 
 fromXmlConduitKeepWhitespaceElements :: XC.Document -> Document
 fromXmlConduitKeepWhitespaceElements doc =

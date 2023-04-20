@@ -14,11 +14,8 @@ where
 import Control.Monad.Except
 import Control.Monad.State.Strict
 import Data.List (intercalate)
-import qualified Data.List as List
 import qualified Data.Map.Strict as Map
-import Data.Maybe
 import Data.Tuple
-import Data.XML.Parse.Class
 import Data.XML.Parse.Types
 import Data.XML.Types
 import Text.XML (Name)
@@ -65,7 +62,7 @@ consumeElementOrAbsent name = do
   remaining@Element {children} <- get
   let go _ [] = pure Nothing
       go skipped (node : rest) = case node of
-        NodeElement name' el i
+        NodeElement name' el _
           | name == name' -> do
               a <- UnorderedM . lift $ fromElement el
               put $ remaining {children = reverse skipped <> rest}
