@@ -7,6 +7,7 @@ module Data.XML.Types
     fromXmlConduitElement,
     toXmlConduit,
     toXmlConduitElement,
+    renderName,
   )
 where
 
@@ -15,6 +16,10 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Text.XML (Name)
 import qualified Text.XML as XC
+
+renderName :: Name -> Text
+renderName XC.Name {nameLocalName, nameNamespace} =
+  maybe "" (\ns -> "{" <> ns <> "}") nameNamespace <> nameLocalName
 
 data Document = Document
   { rootName :: Name,

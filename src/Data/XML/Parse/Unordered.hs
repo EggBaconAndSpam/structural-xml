@@ -24,6 +24,7 @@ import Data.XML.Parse.Class
 import qualified Data.XML.Parse.Ordered as Ordered
 import Data.XML.Parse.Types
 import Text.XML (Name)
+import Data.XML.Types (renderName)
 
 newtype UnorderedM i a = UnorderedM (StateT (Element i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (Element i))
@@ -59,7 +60,7 @@ consumeAttribute name = do
     Just a -> pure a
     Nothing -> do
       Element {info} <- get
-      throwError . parserError info $ "Missing attribute: " <> Text.pack (show name)
+      throwError . parserError info $ "Missing attribute: " <> renderName name
 
 consumeElementOrAbsent :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a)
 consumeElementOrAbsent name = do
@@ -80,7 +81,7 @@ consumeElement name = do
     Just a -> pure a
     Nothing -> do
       Element {info} <- get
-      throwError . parserError info $ "Missing " <> Text.pack (show name) <> " element."
+      throwError . parserError info $ "Missing " <> renderName name <> " element."
 
 -- | todo: parses and unwraps `OrEmpty a`
 consumeElementOrEmpty :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a)

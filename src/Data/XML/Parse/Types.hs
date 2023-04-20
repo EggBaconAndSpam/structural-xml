@@ -5,7 +5,7 @@ import Control.Monad.State.Lazy
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
-import qualified Data.Text as Text
+import Data.XML.Types (renderName)
 import qualified Data.XML.Types as XML
 import GHC.Stack
 import Text.XML (Name)
@@ -82,14 +82,14 @@ zipperPath :: ElementZipper -> [Text]
 zipperPath ElementZipper {parent, ..} = case XML.children before of
   child : rest ->
     ( case child of
-        XML.NodeElement name _ -> "sibling: " <> Text.pack (show name)
-        XML.NodeContent _ -> "sibling: content node"
+        XML.NodeElement name _ -> "skip node \"" <> renderName name <> "\""
+        XML.NodeContent _ -> "skip content node"
     )
       : zipperPath ElementZipper {before = before {XML.children = rest}, ..}
   [] -> case parent of
     Nothing -> []
     Just (parent', name) ->
-      ("node: " <> Text.pack (show name))
+      ("enter node \"" <> renderName name <> "\"")
         : zipperPath parent'
 
 -- For slightly more useful errors...

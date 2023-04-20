@@ -5,6 +5,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.XML.Helpers.ContentElement
 import Data.XML.Parse.Types
+import Data.XML.Types (renderName)
 import qualified Data.XML.Types as XML
 import GHC.Stack
 import Text.Read (readMaybe)
@@ -15,6 +16,17 @@ type Parser i a = Either (ParserError i) a
 
 class FromDocument a where
   fromDocument :: HasCallStack => Document i -> Parser i a
+
+fromRootElement :: FromElement b => Name -> (b -> a) -> Document i -> Parser i a
+fromRootElement name f Document {..} =
+  if rootName == name
+    then f <$> fromElement root
+    else
+      Left . parserError info $
+        "Failed to parse document: expected root element with name "
+          <> renderName name
+          <> " but got "
+          <> renderName rootName
 
 class FromElement a where
   fromElement :: HasCallStack => Element i -> Parser i a
@@ -34,7 +46,7 @@ readContent (text, i) = case readMaybe $ Text.unpack text of
   Just a -> pure a
   Nothing -> do
     let typename = Text.pack . show $ typeRep @a
-    Left . parserError i $ "Failed to read " <> text <> " as " <> typename
+    Left . parserError i $ "Failed to read \"" <> text <> "\" as " <> typename
 
 instance FromElement a => FromElement (OrEmpty a) where
   fromElement el = case fromElement el of
