@@ -3,7 +3,6 @@ module Data.XML.Parse.Class where
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.XML.Helpers.ContentElement
 import Data.XML.Parse.Types
 import Data.XML.Types (renderName)
 import qualified Data.XML.Types as XML
@@ -45,8 +44,11 @@ readContent :: forall a i. (Read a, Typeable a) => (Text, i) -> Parser i a
 readContent (text, i) = case readMaybe $ Text.unpack text of
   Just a -> pure a
   Nothing -> do
-    let typename = Text.pack . show $ typeRep @a
-    Left . parserError i $ "Failed to read \"" <> text <> "\" as " <> typename
+    Left . parserError i $
+      "Failed to read \""
+        <> Text.unpack text
+        <> "\" as "
+        <> show (typeRep @a)
 
 instance FromElement a => FromElement (OrEmpty a) where
   fromElement el = case fromElement el of
@@ -84,12 +86,12 @@ instance FromContent Int where
 instance FromElement XML.Element where
   fromElement = pure . elementWithoutInfo
 
-instance FromContent a => FromElement (ContentElement a) where
-  fromElement el = ContentElement <$> parseContentElement fromContent el
+instance FromContent a => FromElement (XML.ContentElement a) where
+  fromElement el = XML.ContentElement <$> parseContentElement fromContent el
 
-deriving via ContentElement Text instance FromElement Text
+deriving via XML.ContentElement Text instance FromElement Text
 
-deriving via ContentElement Int instance FromElement Int
+deriving via XML.ContentElement Int instance FromElement Int
 
 -- | Expects an element consisting of a single content node or no child nodes
 -- (which is treated as an empty content string). Fails if the element isn't

@@ -8,45 +8,21 @@ module Data.XML.Parse.Ordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
-    stripAllWhitespaceContent,
-    stripWhitespaceContent,
   )
 where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.Char (isSpace)
+import Data.List (intercalate)
 import qualified Data.Map.Strict as Map
-import qualified Data.Text as Text
 import Data.Tuple
 import Data.XML.Parse.Class
 import Data.XML.Parse.Types
 import Data.XML.Types (renderName)
-import qualified Data.XML.Types as XML
 import Text.XML (Name)
 
 newtype OrderedM i a = OrderedM (StateT (Element i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (Element i))
-
--- | Most of the time we want to ignore content that consists purely of
--- whitespace. In fact, we don't expect both textual content and child nodes to
--- be appear inside a single element usually!
-stripAllWhitespaceContent :: XML.Document -> XML.Document
-stripAllWhitespaceContent XML.Document {..} = XML.Document {XML.root = go root, ..}
-  where
-    go el = stripWhitespaceContent $ el {XML.children = map goChild (XML.children el)}
-    goChild (XML.NodeElement name el) = XML.NodeElement name (go el)
-    goChild (XML.NodeContent content) = XML.NodeContent content
-
--- | Most of the time you will want to use `stripAllWhitespaceContent` instead
--- to remove whitespace once at the top level! Use `stripWhitespaceContent` only
--- if you expect to mix content and elements in weird ways.
-stripWhitespaceContent :: XML.Element -> XML.Element
-stripWhitespaceContent el =
-  el {XML.children = filter (not . isWhitespaceContent) $ XML.children el}
-  where
-    isWhitespaceContent (XML.NodeContent text) = Text.all isSpace text
-    isWhitespaceContent _ = False
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
@@ -142,15 +118,15 @@ consumeChoiceElement = do
       | otherwise ->
           throwError . parserError i $
             "Unexpected node! Expected (one of) "
-              <> (Text.intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+              <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
               <> " but found "
               <> renderName name
               <> " instead"
     NodeContent (_, i) : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected (one of) "
-          <> (Text.intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+          <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
     [] ->
       throwError . parserError info $
         "Missing choice node (one of): "
-          <> (Text.intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+          <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)

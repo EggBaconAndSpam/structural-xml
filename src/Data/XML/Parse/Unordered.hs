@@ -8,23 +8,20 @@ module Data.XML.Parse.Unordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
-    Ordered.stripAllWhitespaceContent,
-    Ordered.stripWhitespaceContent,
   )
 where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
+import Data.List (intercalate)
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
-import qualified Data.Text as Text
 import Data.Tuple
 import Data.XML.Parse.Class
-import qualified Data.XML.Parse.Ordered as Ordered
 import Data.XML.Parse.Types
-import Text.XML (Name)
 import Data.XML.Types (renderName)
+import Text.XML (Name)
 
 newtype UnorderedM i a = UnorderedM (StateT (Element i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (Element i))
@@ -109,4 +106,4 @@ consumeChoiceElement = do
     [] ->
       throwError . parserError info $
         "Missing choice node (one of): "
-          <> Text.pack (show . Map.keys $ fromChoiceElement @a)
+          <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)

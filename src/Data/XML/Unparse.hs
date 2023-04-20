@@ -4,7 +4,6 @@ import Control.Monad.State.Strict
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.XML.Helpers.ContentElement
 import Data.XML.Types
 import Text.XML (Name)
 

@@ -78,7 +78,7 @@ data ElementZipper = ElementZipper
   }
 
 -- move this somewhere else?
-zipperPath :: ElementZipper -> [Text]
+zipperPath :: ElementZipper -> [String]
 zipperPath ElementZipper {parent, ..} = case XML.children before of
   child : rest ->
     ( case child of
@@ -127,12 +127,12 @@ elementWithZipper parent el = do
 data ParserError i = ParserError
   { callstack :: CallStack, -- todo
     info :: i,
-    message :: Text -- could turn into a sum?
+    message :: String -- could turn into a sum?
   }
   deriving stock (Show)
   deriving anyclass (Exception)
 
-parserError :: HasCallStack => i -> Text -> ParserError i
+parserError :: HasCallStack => i -> String -> ParserError i
 parserError info message = ParserError {callstack = callStack, ..}
 
 -- | todo: Tries to parse the element. If the parser fails and the element is empty

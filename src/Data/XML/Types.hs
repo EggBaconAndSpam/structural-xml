@@ -8,36 +8,48 @@ module Data.XML.Types
     toXmlConduit,
     toXmlConduitElement,
     renderName,
+    ContentElement (..),
+    stripAllWhitespaceContent,
+    stripWhitespaceContent,
   )
 where
 
+import Data.Char (isSpace)
 import Data.Map.Strict (Map)
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
+import qualified Data.Text as Text
+import GHC.Generics
 import Text.XML (Name)
 import qualified Text.XML as XC
 
-renderName :: Name -> Text
+renderName :: Name -> String
 renderName XC.Name {nameLocalName, nameNamespace} =
-  maybe "" (\ns -> "{" <> ns <> "}") nameNamespace <> nameLocalName
+  maybe "" (\ns -> "{" <> Text.unpack ns <> "}") nameNamespace
+    <> Text.unpack nameLocalName
 
 data Document = Document
   { rootName :: Name,
     root :: Element
   }
-  deriving stock (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
 
 -- We move element names one level up to the parent element.
 data Element = Element
   { attributes :: Map Name Text,
     children :: [Node]
   }
-  deriving stock (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
 
 data Node
   = NodeElement Name Element
   | NodeContent Text
-  deriving stock (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord, Generic)
+
+-- | Helper for elements that only contain content. Has To/FromElement instances
+-- defined in terms of To/FromContent.
+newtype ContentElement a = ContentElement {content :: a}
+  deriving stock (Show, Eq, Ord, Generic)
 
 instance Semigroup Element where
   el <> el' =
@@ -53,8 +65,14 @@ emptyElement :: Element
 emptyElement = Element mempty []
 
 {- Conversion from and to xml-conduit -}
+
+-- | Strips whitespace content since we don't usually care about that. If you
+-- want a lossless conversion instead use fromXmlConduitKeepWhitespaceElements.
 fromXmlConduit :: XC.Document -> Document
-fromXmlConduit doc =
+fromXmlConduit = stripAllWhitespaceContent . fromXmlConduitKeepWhitespaceElements
+
+fromXmlConduitKeepWhitespaceElements :: XC.Document -> Document
+fromXmlConduitKeepWhitespaceElements doc =
   Document
     { rootName = XC.elementName $ XC.documentRoot doc,
       root = fromXmlConduitElement $ XC.documentRoot doc
@@ -92,3 +110,23 @@ toXmlConduitElement name Element {..} =
     toXmlConduitNode :: Node -> XC.Node
     toXmlConduitNode (NodeContent t) = XC.NodeContent t
     toXmlConduitNode (NodeElement n el) = XC.NodeElement $ toXmlConduitElement n el
+
+-- | Most of the time we want to ignore content that consists purely of
+-- whitespace. In fact, we don't expect both textual content and child nodes to
+-- be appear inside a single element!
+stripAllWhitespaceContent :: Document -> Document
+stripAllWhitespaceContent Document {..} = Document {root = go root, ..}
+  where
+    go el = stripWhitespaceContent $ el {children = map goChild (children el)}
+    goChild (NodeElement name el) = NodeElement name (go el)
+    goChild (NodeContent content) = NodeContent content
+
+-- | Most of the time you will want to use `stripAllWhitespaceContent` instead
+-- to remove whitespace once at the top level! Use `stripWhitespaceContent` only
+-- if you expect to mix content and elements in weird ways.
+stripWhitespaceContent :: Element -> Element
+stripWhitespaceContent el =
+  el {children = filter (not . isWhitespaceContent) $ children el}
+  where
+    isWhitespaceContent (NodeContent text) = Text.all isSpace text
+    isWhitespaceContent _ = False
