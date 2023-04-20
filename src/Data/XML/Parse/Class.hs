@@ -4,7 +4,7 @@ import Data.Map.Strict (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.XML.Parse.Types
-import Data.XML.Types (renderName)
+import Data.XML.Types
 import qualified Data.XML.Types as XML
 import GHC.Stack
 import Text.Read (readMaybe)
@@ -14,9 +14,9 @@ import Type.Reflection (Typeable, typeRep)
 type Parser i a = Either (ParserError i) a
 
 class FromDocument a where
-  fromDocument :: HasCallStack => Document i -> Parser i a
+  fromDocument :: HasCallStack => AnnotatedDocument i -> Parser i a
 
-fromRootElement :: FromElement b => Name -> (b -> a) -> Document i -> Parser i a
+fromRootElement :: FromElement b => Name -> (b -> a) -> AnnotatedDocument i -> Parser i a
 fromRootElement name f Document {..} =
   if rootName == name
     then f <$> fromElement root
@@ -28,7 +28,7 @@ fromRootElement name f Document {..} =
           <> renderName rootName
 
 class FromElement a where
-  fromElement :: HasCallStack => Element i -> Parser i a
+  fromElement :: HasCallStack => AnnotatedElement i -> Parser i a
 
 -- | Textual 'content' appears either inside elements, e.g.
 --
@@ -38,10 +38,10 @@ class FromElement a where
 --
 -- <element attr_name="<attr_content>"/>
 class FromContent a where
-  fromContent :: HasCallStack => (Text, i) -> Parser i a
+  fromContent :: HasCallStack => Text -> i -> Parser i a
 
-readContent :: forall a i. (Read a, Typeable a) => (Text, i) -> Parser i a
-readContent (text, i) = case readMaybe $ Text.unpack text of
+readContent :: forall a i. (Read a, Typeable a) => Text -> i -> Parser i a
+readContent text i = case readMaybe $ Text.unpack text of
   Just a -> pure a
   Nothing -> do
     Left . parserError i $
@@ -74,17 +74,20 @@ instance FromElement a => FromElement (OrEmpty a) where
 --
 -- data Example = A Something | B SomethingElse
 class FromChoiceElement a where
-  fromChoiceElement :: Map Name (Element i -> Parser i a)
+  fromChoiceElement :: Map Name (AnnotatedElement i -> Parser i a)
 
 {- Instances -}
 instance FromContent Text where
-  fromContent = pure . fst
+  fromContent t _ = pure t
 
 instance FromContent Int where
   fromContent = readContent
 
-instance FromElement XML.Element where
-  fromElement = pure . elementWithoutInfo
+instance FromElement Element where
+  fromElement = pure . unAnnotateElement
+
+instance FromDocument Document where
+  fromDocument = pure . unAnnotateDocument
 
 instance FromContent a => FromElement (XML.ContentElement a) where
   fromElement el = XML.ContentElement <$> parseContentElement fromContent el
@@ -96,7 +99,7 @@ deriving via XML.ContentElement Int instance FromElement Int
 -- | Expects an element consisting of a single content node or no child nodes
 -- (which is treated as an empty content string). Fails if the element isn't
 --  fully consumed, i.e. if the element has attributes.
-parseContentElement :: ((Text, i) -> Parser i a) -> Element i -> Parser i a
+parseContentElement :: (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
 parseContentElement p el@Element {info} = do
   (leftovers, a) <- parseContentElementLax p el
   if isEmptyElement leftovers
@@ -104,15 +107,15 @@ parseContentElement p el@Element {info} = do
     else Left $ parserError info "Failed to parse content element: element not completely consumed (unexpected attributes!)."
 
 -- | Returns leftovers (i.e. attributes).
--- need catch?...
+-- todo: Lax -> Partial/Part?
 parseContentElementLax ::
-  ((Text, i) -> Parser i a) ->
-  Element i ->
-  Parser i (Element i, a)
+  (Text -> i -> Parser i a) ->
+  AnnotatedElement i ->
+  Parser i (AnnotatedElement i, a)
 parseContentElementLax p el@Element {children, info} = do
-  content <- case children of
-    [NodeContent c] -> pure c
+  (content, i) <- case children of
+    [NodeContent c i] -> pure (c, i)
     [] -> pure ("", info)
     _ -> Left $ parserError info "Failed to parse content element: unexpected child nodes."
-  a <- p content
+  a <- p content i
   pure (el {children = []}, a)

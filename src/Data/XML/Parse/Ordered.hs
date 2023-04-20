@@ -18,15 +18,15 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML.Parse.Class
 import Data.XML.Parse.Types
-import Data.XML.Types (renderName)
+import Data.XML.Types
 import Text.XML (Name)
 
-newtype OrderedM i a = OrderedM (StateT (Element i) (Either (ParserError i)) a)
-  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (Element i))
+newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
+  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
-parseOrderedElement :: OrderedM i a -> Element i -> Parser i a
+parseOrderedElement :: OrderedM i a -> AnnotatedElement i -> Parser i a
 parseOrderedElement p el@Element {info} = do
   (el', a) <- parseOrderedElementLax p el
   if isEmptyElement el'
@@ -35,7 +35,7 @@ parseOrderedElement p el@Element {info} = do
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Return the
 -- rest of the element that wasn't consumed.
-parseOrderedElementLax :: OrderedM i a -> Element i -> Parser i (Element i, a)
+parseOrderedElementLax :: OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
 parseOrderedElementLax (OrderedM p) el = swap <$> runStateT p el
 
 consumeOptionalAttribute :: FromContent a => Name -> OrderedM i (Maybe a)
@@ -44,7 +44,7 @@ consumeOptionalAttribute name = do
   case Map.lookup name attributes of
     Nothing -> pure Nothing
     Just (text, i) -> do
-      a <- OrderedM . lift $ fromContent (text, i)
+      a <- OrderedM . lift $ fromContent text i
       put $ el {attributes = Map.delete name attributes}
       pure $ Just a
 
@@ -67,7 +67,7 @@ consumeElementOrAbsent name = do
           put $ remaining {children = rest}
           pure $ Just a
       | otherwise -> pure Nothing
-    NodeContent (_, i) : _ ->
+    NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! When parsing (potentially absent) node: "
           <> renderName name
@@ -89,13 +89,13 @@ consumeElement name = do
               <> " but found "
               <> renderName name'
               <> " instead"
-    NodeContent (_, i) : _ ->
+    NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected node: "
           <> renderName name
     [] -> throwError $ parserError info $ "Missing node (reached end of element): " <> renderName name
 
--- | todo: parses and unwraps `OrEmpty a`
+-- | Parses `Maybe a` via `OrEmpty a`.
 consumeElementOrEmpty :: FromElement a => Name -> OrderedM i (Maybe a)
 consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
 
@@ -122,7 +122,7 @@ consumeChoiceElement = do
               <> " but found "
               <> renderName name
               <> " instead"
-    NodeContent (_, i) : _ ->
+    NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected (one of) "
           <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)

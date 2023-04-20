@@ -20,15 +20,15 @@ import Data.Maybe
 import Data.Tuple
 import Data.XML.Parse.Class
 import Data.XML.Parse.Types
-import Data.XML.Types (renderName)
+import Data.XML.Types
 import Text.XML (Name)
 
-newtype UnorderedM i a = UnorderedM (StateT (Element i) (Either (ParserError i)) a)
-  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (Element i))
+newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
+  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
-parseUnorderedElement :: UnorderedM i a -> Element i -> Parser i a
+parseUnorderedElement :: UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElement p el@Element {info} = do
   (el', a) <- parseUnorderedElementLax p el
   if isEmptyElement el'
@@ -37,7 +37,7 @@ parseUnorderedElement p el@Element {info} = do
 
 -- | Parse an 'unordered' element (corresponding to an xml 'all'). Return the
 -- rest of the element that wasn't consumed.
-parseUnorderedElementLax :: UnorderedM i a -> Element i -> Parser i (Element i, a)
+parseUnorderedElementLax :: UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
 parseUnorderedElementLax (UnorderedM p) el = swap <$> runStateT p el
 
 consumeOptionalAttribute :: FromContent a => Name -> UnorderedM i (Maybe a)
@@ -46,7 +46,7 @@ consumeOptionalAttribute name = do
   case Map.lookup name attributes of
     Nothing -> pure Nothing
     Just (text, i) -> do
-      a <- UnorderedM . lift $ fromContent (text, i)
+      a <- UnorderedM . lift $ fromContent text i
       put $ el {attributes = Map.delete name attributes}
       pure $ Just a
 
@@ -63,7 +63,7 @@ consumeElementOrAbsent :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a
 consumeElementOrAbsent name = do
   remaining@Element {children} <- get
   let matchElementName (NodeElement name' el i) = if name == name' then Just (el, i) else Nothing
-      matchElementName (NodeContent _) = Nothing
+      matchElementName (NodeContent _ _) = Nothing
   case mapMaybe matchElementName children of
     [] -> pure Nothing
     ((el, i) : _) -> do
@@ -80,7 +80,7 @@ consumeElement name = do
       Element {info} <- get
       throwError . parserError info $ "Missing " <> renderName name <> " element."
 
--- | todo: parses and unwraps `OrEmpty a`
+-- | Parses `Maybe a` via `OrEmpty a`.
 consumeElementOrEmpty :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a)
 consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
 

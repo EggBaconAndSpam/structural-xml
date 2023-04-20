@@ -2,128 +2,62 @@ module Data.XML.Parse.Types where
 
 import Control.Exception (Exception)
 import Control.Monad.State.Lazy
-import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Text (Text)
-import Data.XML.Types (renderName)
-import qualified Data.XML.Types as XML
+import Data.XML.Types
 import GHC.Stack
 import Text.XML (Name)
 
--- todo: rename... PDocument? DocumentI? Document'?
-data Document i = Document
-  { rootName :: Name,
-    root :: Element i,
-    info :: i
-  }
-  deriving stock (Show, Eq, Ord)
-
-isEmptyElement :: Element i -> Bool
-isEmptyElement Element {..} = null attributes && null children
-
-data Element i = Element
-  { attributes :: Map Name (Text, i),
-    children :: [Node i],
-    info :: ~i
-  }
-  deriving stock (Show, Eq, Ord)
-
-data Node i
-  = NodeElement Name (Element i) i
-  | NodeContent (Text, i)
-  deriving stock (Show, Eq, Ord)
-
-documentWithoutInfo :: Document i -> XML.Document
-documentWithoutInfo Document {..} =
-  XML.Document
-    { root = elementWithoutInfo root,
-      ..
-    }
-
-elementWithoutInfo :: Element i -> XML.Element
-elementWithoutInfo Element {..} =
-  XML.Element
-    { attributes = Map.map fst attributes,
-      children = map nodeWithoutInfo children
-    }
-  where
-    nodeWithoutInfo = \case
-      NodeContent (text, _) -> XML.NodeContent text
-      NodeElement name el _ -> XML.NodeElement name (elementWithoutInfo el)
-
-documentWithTrivialInfo :: XML.Document -> Document ()
-documentWithTrivialInfo XML.Document {..} =
-  Document
-    { root = elementWithTrivialInfo root,
-      info = (),
-      ..
-    }
-
-elementWithTrivialInfo :: XML.Element -> Element ()
-elementWithTrivialInfo XML.Element {..} =
-  Element
-    { attributes = Map.map (\t -> (t, ())) attributes,
-      children = map nodeWithTrivialInfo children,
-      info = ()
-    }
-  where
-    nodeWithTrivialInfo = \case
-      XML.NodeContent text -> NodeContent (text, ())
-      XML.NodeElement name el -> NodeElement name (elementWithTrivialInfo el) ()
-
--- Almost as good as textual locations...
+-- | Almost as good as textual locations...
 data ElementZipper = ElementZipper
   { parent :: Maybe (ElementZipper, Name),
-    before :: XML.Element, -- reversed children
-    after :: XML.Element
+    before :: Element, -- reversed children
+    after :: Element
   }
 
--- move this somewhere else?
-zipperPath :: ElementZipper -> [String]
-zipperPath ElementZipper {parent, ..} = case XML.children before of
+errorPath :: ElementZipper -> [String]
+errorPath ElementZipper {parent, ..} = case children before of
   child : rest ->
     ( case child of
-        XML.NodeElement name _ -> "skip node \"" <> renderName name <> "\""
-        XML.NodeContent _ -> "skip content node"
+        NodeElement name _ _ -> "skip node \"" <> renderName name <> "\""
+        NodeContent _ _ -> "skip content node"
     )
-      : zipperPath ElementZipper {before = before {XML.children = rest}, ..}
+      : errorPath ElementZipper {before = before {children = rest}, ..}
   [] -> case parent of
     Nothing -> []
     Just (parent', name) ->
       ("enter node \"" <> renderName name <> "\"")
-        : zipperPath parent'
+        : errorPath parent'
 
--- For slightly more useful errors...
-documentWithZipper :: XML.Document -> Document ElementZipper
-documentWithZipper XML.Document {..} =
+documentWithZipper :: Document -> AnnotatedDocument ElementZipper
+documentWithZipper Document {..} =
   Document
     { root = elementWithZipper (Just (rootZipper, rootName)) root,
       info = rootZipper,
       ..
     }
   where
-    rootZipper = ElementZipper {parent = Nothing, before = XML.emptyElement, after = root}
+    rootZipper = ElementZipper {parent = Nothing, before = emptyElement, after = root}
 
-elementWithZipper :: Maybe (ElementZipper, Name) -> XML.Element -> Element ElementZipper
+elementWithZipper :: Maybe (ElementZipper, Name) -> Element -> AnnotatedElement ElementZipper
 elementWithZipper parent el = do
   Element
-    { attributes = Map.map (\t -> (t, initialState)) $ XML.attributes el,
-      children = evalState (mapM nodeWithZipper $ XML.children el) initialState,
+    { attributes = Map.map (\(t, _) -> (t, initialState)) $ attributes el,
+      children = evalState (mapM nodeWithZipper $ children el) initialState,
       info = initialState
     }
   where
-    initialState = ElementZipper {before = XML.emptyElement, after = el, parent}
+    initialState = ElementZipper {before = emptyElement, after = el, parent}
 
     nodeWithZipper node = do
       current@ElementZipper {before, after} <- get
       put $
         current
-          { before = XML.Element {attributes = mempty, children = [node]} <> before,
-            after = after {XML.children = drop 1 $ XML.children after}
+          { before = Element {attributes = mempty, children = [node], info = ()} <> before,
+            after = after {children = drop 1 $ children after}
           }
       case node of
-        XML.NodeContent text -> pure $ NodeContent (text, current)
-        XML.NodeElement name child -> pure $ NodeElement name (elementWithZipper (Just (current, name)) child) current
+        NodeContent text _ -> pure $ NodeContent text current
+        NodeElement name child _ -> pure $ NodeElement name (elementWithZipper (Just (current, name)) child) current
 
 data ParserError i = ParserError
   { callstack :: CallStack, -- todo
@@ -135,7 +69,3 @@ data ParserError i = ParserError
 
 parserError :: HasCallStack => i -> String -> ParserError i
 parserError info message = ParserError {callstack = callStack, ..}
-
--- | todo: Tries to parse the element. If the parser fails and the element is empty
--- then returns Nothing. better: modify parser?
-newtype OrEmpty a = OrEmpty {unOrEmpty :: Maybe a}
