@@ -10,6 +10,7 @@ import qualified Data.XML.Types as XML
 import GHC.Stack
 import Text.XML (Name)
 
+-- todo: rename... PDocument? DocumentI? Document'?
 data Document i = Document
   { rootName :: Name,
     root :: Element i,

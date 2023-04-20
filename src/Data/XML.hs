@@ -2,8 +2,6 @@ module Data.XML
   ( module Data.XML.Types,
     module Data.XML.Serialisation,
     module Data.XML.Deserialisation,
-    module Data.XML.Helpers.QuotedXML,
-    module Data.XML.Helpers.ContentElement,
     parseDocument,
     parseDocument',
     unsafeParseDocument,
@@ -15,8 +13,6 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text (fromStrict, toStrict)
 import Data.XML.Deserialisation
-import Data.XML.Helpers.ContentElement
-import Data.XML.Helpers.QuotedXML
 import Data.XML.Serialisation
 import Data.XML.Types
 import qualified Text.XML as XC

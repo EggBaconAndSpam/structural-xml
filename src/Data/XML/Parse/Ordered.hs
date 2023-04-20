@@ -87,7 +87,7 @@ consumeElement name = do
             "Unexpected node! Expected "
               <> renderName name
               <> " but found "
-              <> renderName name
+              <> renderName name'
               <> " instead"
     NodeContent (_, i) : _ ->
       throwError . parserError i $
