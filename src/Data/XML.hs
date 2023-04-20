@@ -32,9 +32,9 @@ decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
       Left ParserError {..} ->
         Left $
           unlines
-            ( message
-                : "To get to the error location in document:"
-                : map ("  " <>) (reverse $ errorPath info)
+            ( message :
+              "To get to the error location in document:" :
+              map ("  " <>) (reverse $ errorPath info)
             )
             <> prettyCallStack callstack
       Right a -> Right a

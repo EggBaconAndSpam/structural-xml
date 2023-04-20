@@ -50,13 +50,13 @@ errorPath ElementZipper {parent, ..} = case children before of
     ( case child of
         NodeElement name _ _ -> "skip node \"" <> renderName name <> "\""
         NodeContent _ _ -> "skip content node"
-    )
-      : errorPath ElementZipper {before = before {children = rest}, ..}
+    ) :
+    errorPath ElementZipper {before = before {children = rest}, ..}
   [] -> case parent of
     Nothing -> []
     Just (parent', name) ->
-      ("enter node \"" <> renderName name <> "\"")
-        : errorPath parent'
+      ("enter node \"" <> renderName name <> "\"") :
+      errorPath parent'
 
 documentWithZipper :: Document -> AnnotatedDocument ElementZipper
 documentWithZipper Document {..} =

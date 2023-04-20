@@ -24,6 +24,7 @@ module Data.XML.Types
     renderName,
     stripAllWhitespaceContent,
     stripWhitespaceContent,
+    stripNamespaces,
 
     -- * newtype wrappers
     ContentElement (..),
@@ -38,7 +39,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import GHC.Generics
-import Text.XML (Name)
+import Text.XML (Name (..))
 import qualified Text.XML as XC
 
 renderName :: Name -> String
@@ -182,3 +183,26 @@ stripWhitespaceContent el =
   where
     isWhitespaceContent (NodeContent text _) = Text.all isSpace text
     isWhitespaceContent _ = False
+
+-- | Sometimes either you or whoever constructs your input doesn't care about
+-- namespaces and you need to drop them.
+stripNamespaces :: AnnotatedDocument i -> AnnotatedDocument i
+stripNamespaces doc@Document {rootName, root} =
+  doc
+    { rootName = stripNamespace rootName,
+      root = stripElementNamespaces root
+    }
+  where
+    stripNamespace :: Name -> Name
+    stripNamespace name = name {nameNamespace = Nothing}
+
+    stripElementNamespaces el@Element {attributes, children} =
+      el
+        { attributes = Map.mapKeys stripNamespace attributes,
+          children = map stripNodeNamespaces children
+        }
+
+    stripNodeNamespaces = \case
+      NodeElement name element i ->
+        NodeElement (stripNamespace name) (stripElementNamespaces element) i
+      NodeContent content i -> NodeContent content i
