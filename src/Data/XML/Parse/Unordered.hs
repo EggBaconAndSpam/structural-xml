@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 module Data.XML.Parse.Unordered
   ( -- * A monad for parsing unordered elements
     UnorderedM (..),
@@ -13,6 +14,7 @@ module Data.XML.Parse.Unordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
+    consumeRemainingElements,
 
     -- * Re-exports
     module Data.XML.Types,
@@ -74,9 +76,9 @@ consumeElementOrAbsent name = do
       go skipped (node : rest) = case node of
         NodeElement name' el _
           | name == name' -> do
-              a <- UnorderedM . lift $ fromElement el
-              put $ remaining {children = reverse skipped <> rest}
-              pure $ Just a
+            a <- UnorderedM . lift $ fromElement el
+            put $ remaining {children = reverse skipped <> rest}
+            pure $ Just a
         _ -> go (node : skipped) rest
   go [] children
 
@@ -110,8 +112,22 @@ consumeChoiceElement = do
       go skipped (node : rest) = case node of
         NodeElement name el _
           | Just p <- Map.lookup name fromChoiceElement -> do
-              a <- UnorderedM . lift $ p el
-              put $ remaining {children = reverse skipped <> rest}
-              pure a
+            a <- UnorderedM . lift $ p el
+            put $ remaining {children = reverse skipped <> rest}
+            pure a
         _ -> go (node : skipped) rest
   go [] children
+
+consumeRemainingElements :: HasCallStack => UnorderedM i [(Name, AnnotatedElement i)]
+consumeRemainingElements = do
+  remaining@Element {children} <- get
+  let (rest, res) = go [] children
+  put $ remaining {children = reverse rest}
+  pure res
+  where
+    go skipped [] = (skipped, [])
+    go skipped (node : rest) = case node of
+      NodeElement name el _ ->
+        let (skipped', result) = go skipped rest
+         in (skipped', (name, el) : result)
+      _ -> go (node : skipped) rest

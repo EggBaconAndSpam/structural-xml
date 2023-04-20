@@ -14,6 +14,7 @@ module Data.XML.Parse.Ordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
+    consumeRemainingElements,
 
     -- * Re-exports
     module Data.XML.Types,
@@ -74,9 +75,9 @@ consumeElementOrAbsent name = do
   case children of
     NodeElement name' el _ : rest
       | name == name' -> do
-          a <- OrderedM . lift $ fromElement el
-          put $ remaining {children = rest}
-          pure $ Just a
+        a <- OrderedM . lift $ fromElement el
+        put $ remaining {children = rest}
+        pure $ Just a
       | otherwise -> pure Nothing
     NodeContent _ i : _ ->
       throwError . parserError i $
@@ -90,16 +91,16 @@ consumeElement name = do
   case children of
     NodeElement name' el i : rest
       | name == name' -> do
-          a <- OrderedM . lift $ fromElement el
-          put $ remaining {children = rest}
-          pure a
+        a <- OrderedM . lift $ fromElement el
+        put $ remaining {children = rest}
+        pure a
       | otherwise ->
-          throwError . parserError i $
-            "Unexpected node! Expected "
-              <> renderName name
-              <> " but found "
-              <> renderName name'
-              <> " instead"
+        throwError . parserError i $
+          "Unexpected node! Expected "
+            <> renderName name
+            <> " but found "
+            <> renderName name'
+            <> " instead"
     NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected node: "
@@ -123,16 +124,16 @@ consumeChoiceElement = do
   case children of
     NodeElement name el i : rest
       | Just p <- Map.lookup name fromChoiceElement -> do
-          a <- OrderedM . lift $ p el
-          put $ remaining {children = rest}
-          pure a
+        a <- OrderedM . lift $ p el
+        put $ remaining {children = rest}
+        pure a
       | otherwise ->
-          throwError . parserError i $
-            "Unexpected node! Expected (one of) "
-              <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
-              <> " but found "
-              <> renderName name
-              <> " instead"
+        throwError . parserError i $
+          "Unexpected node! Expected (one of) "
+            <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+            <> " but found "
+            <> renderName name
+            <> " instead"
     NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected (one of) "
@@ -141,3 +142,14 @@ consumeChoiceElement = do
       throwError . parserError info $
         "Missing choice node (one of): "
           <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+
+consumeRemainingElements :: HasCallStack => OrderedM i [(Name, AnnotatedElement i)]
+consumeRemainingElements = do
+  remaining@Element {children} <- get
+  result <- forM children $ \case
+    NodeElement name el _ -> pure (name, el)
+    NodeContent _ i ->
+      throwError . parserError i $
+        "Unexpected content node when parsing ordered element! When parsing remaining child elements."
+  put $ remaining {children = []}
+  pure result
