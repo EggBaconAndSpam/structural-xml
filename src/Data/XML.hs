@@ -20,20 +20,24 @@ import qualified Data.Text.Lazy as Text.Lazy
 import Data.XML.Parse.Types
 import Data.XML.Types
 import Data.XML.Unparse
+import GHC.Stack
 import Text.XML (def, parseText, renderText, rsPretty)
 
-decodeDocument :: FromDocument a => Text -> Either String a
+decodeDocument :: (HasCallStack, FromDocument a) => Text -> Either String a
 decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
   Left err -> Left $ show err
   Right conduitDoc -> do
     let doc = documentWithZipper $ fromXmlConduit conduitDoc
     case fromDocument doc of
       Left ParserError {..} ->
-        Left . unlines $
-          message
-            : "Error location in document:"
-            : map ("- " <>) (reverse $ errorPath info)
-      Right r -> Right r
+        Left $
+          unlines
+            ( message
+                : "To get to the error location in document:"
+                : map ("  " <>) (reverse $ errorPath info)
+            )
+            <> prettyCallStack callstack
+      Right a -> Right a
 
 renderDocument :: ToDocument a => a -> Text
 renderDocument =

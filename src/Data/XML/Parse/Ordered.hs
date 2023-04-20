@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 module Data.XML.Parse.Ordered
   ( -- * A monad for parsing ordered elements
     OrderedM (..),
@@ -26,6 +28,7 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML.Parse.Types
 import Data.XML.Types
+import GHC.Stack
 import Text.XML (Name)
 
 -- | todo: state for keeping track of remaining nodes and attributes.
@@ -34,7 +37,7 @@ newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserErro
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
-parseOrderedElement :: OrderedM i a -> AnnotatedElement i -> Parser i a
+parseOrderedElement :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i a
 parseOrderedElement p el@Element {info} = do
   (el', a) <- parseOrderedElementLax p el
   if isEmptyElement el'
@@ -43,10 +46,10 @@ parseOrderedElement p el@Element {info} = do
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Return the
 -- rest of the element that wasn't consumed.
-parseOrderedElementLax :: OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseOrderedElementLax :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
 parseOrderedElementLax (OrderedM p) el = swap <$> runStateT p el
 
-consumeOptionalAttribute :: FromContent a => Name -> OrderedM i (Maybe a)
+consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> OrderedM i (Maybe a)
 consumeOptionalAttribute name = do
   el@Element {attributes} <- get
   case Map.lookup name attributes of
@@ -56,7 +59,7 @@ consumeOptionalAttribute name = do
       put $ el {attributes = Map.delete name attributes}
       pure $ Just a
 
-consumeAttribute :: FromContent a => Name -> OrderedM i a
+consumeAttribute :: (HasCallStack, FromContent a) => Name -> OrderedM i a
 consumeAttribute name = do
   ma <- consumeOptionalAttribute name
   case ma of
@@ -65,7 +68,7 @@ consumeAttribute name = do
       Element {info} <- get
       throwError . parserError info $ "Missing attribute: " <> renderName name
 
-consumeElementOrAbsent :: FromElement a => Name -> OrderedM i (Maybe a)
+consumeElementOrAbsent :: (HasCallStack, FromElement a) => Name -> OrderedM i (Maybe a)
 consumeElementOrAbsent name = do
   remaining@Element {children} <- get
   case children of
@@ -81,7 +84,7 @@ consumeElementOrAbsent name = do
           <> renderName name
     _ -> pure Nothing
 
-consumeElement :: FromElement a => Name -> OrderedM i a
+consumeElement :: (HasCallStack, FromElement a) => Name -> OrderedM i a
 consumeElement name = do
   remaining@Element {children, info} <- get
   case children of
@@ -104,17 +107,17 @@ consumeElement name = do
     [] -> throwError $ parserError info $ "Missing node (reached end of element): " <> renderName name
 
 -- | Parses `Maybe a` via `OrEmpty a`.
-consumeElementOrEmpty :: FromElement a => Name -> OrderedM i (Maybe a)
+consumeElementOrEmpty :: (HasCallStack, FromElement a) => Name -> OrderedM i (Maybe a)
 consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
 
-consumeElements :: FromElement a => Name -> OrderedM i [a]
+consumeElements :: (HasCallStack, FromElement a) => Name -> OrderedM i [a]
 consumeElements name = do
   ma <- consumeElementOrAbsent name
   case ma of
     Nothing -> pure []
     Just a -> (a :) <$> consumeElements name
 
-consumeChoiceElement :: forall a i. FromChoiceElement a => OrderedM i a
+consumeChoiceElement :: forall a i. (HasCallStack, FromChoiceElement a) => OrderedM i a
 consumeChoiceElement = do
   remaining@Element {children, info} <- get
   case children of

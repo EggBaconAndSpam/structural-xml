@@ -105,7 +105,7 @@ type Parser i a = Either (ParserError i) a
 class FromDocument a where
   fromDocument :: HasCallStack => AnnotatedDocument i -> Parser i a
 
-fromRootElement :: FromElement b => Name -> (b -> a) -> AnnotatedDocument i -> Parser i a
+fromRootElement :: (HasCallStack, FromElement b) => Name -> (b -> a) -> AnnotatedDocument i -> Parser i a
 fromRootElement name f Document {..} =
   if rootName == name
     then f <$> fromElement root
@@ -129,7 +129,7 @@ class FromElement a where
 class FromContent a where
   fromContent :: HasCallStack => Text -> i -> Parser i a
 
-readContent :: forall a i. (Read a, Typeable a) => Text -> i -> Parser i a
+readContent :: forall a i. (HasCallStack, Read a, Typeable a) => Text -> i -> Parser i a
 readContent text i = case readMaybe $ Text.unpack text of
   Just a -> pure a
   Nothing -> do
@@ -163,7 +163,7 @@ instance FromElement a => FromElement (OrEmpty a) where
 --
 -- data Example = A Something | B SomethingElse
 class FromChoiceElement a where
-  fromChoiceElement :: Map Name (AnnotatedElement i -> Parser i a)
+  fromChoiceElement :: HasCallStack => Map Name (AnnotatedElement i -> Parser i a)
 
 {- Instances -}
 instance FromContent Text where
@@ -188,7 +188,8 @@ deriving via ContentElement Int instance FromElement Int
 -- | Expects an element consisting of a single content node or no child nodes
 -- (which is treated as an empty content string). Fails if the element isn't
 --  fully consumed, i.e. if the element has attributes.
-parseContentElement :: (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
+parseContentElement ::
+  HasCallStack => (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
 parseContentElement p el@Element {info} = do
   (leftovers, a) <- parseContentElementLax p el
   if isEmptyElement leftovers
@@ -198,6 +199,7 @@ parseContentElement p el@Element {info} = do
 -- | Returns leftovers (i.e. attributes).
 -- todo: Lax -> Partial/Part?
 parseContentElementLax ::
+  HasCallStack =>
   (Text -> i -> Parser i a) ->
   AnnotatedElement i ->
   Parser i (AnnotatedElement i, a)
