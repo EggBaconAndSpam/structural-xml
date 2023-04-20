@@ -23,6 +23,7 @@ import Data.XML.Parse.Types
 import Data.XML.Types
 import Text.XML (Name)
 
+-- Quadratic behaviour in number of children. Could be improved, but probably not an issue.
 newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
 
@@ -59,19 +60,20 @@ consumeAttribute name = do
       Element {info} <- get
       throwError . parserError info $ "Missing attribute: " <> renderName name
 
-consumeElementOrAbsent :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a)
+consumeElementOrAbsent :: FromElement a => Name -> UnorderedM i (Maybe a)
 consumeElementOrAbsent name = do
   remaining@Element {children} <- get
-  let matchElementName (NodeElement name' el i) = if name == name' then Just (el, i) else Nothing
-      matchElementName (NodeContent _ _) = Nothing
-  case mapMaybe matchElementName children of
-    [] -> pure Nothing
-    ((el, i) : _) -> do
-      a <- UnorderedM . lift $ fromElement el
-      put $ remaining {children = List.delete (NodeElement name el i) children}
-      pure $ Just a
+  let go _ [] = pure Nothing
+      go skipped (node : rest) = case node of
+        NodeElement name' el i
+          | name == name' -> do
+              a <- UnorderedM . lift $ fromElement el
+              put $ remaining {children = reverse skipped <> rest}
+              pure $ Just a
+        _ -> go (node : skipped) rest
+  go [] children
 
-consumeElement :: (FromElement a, Eq i) => Name -> UnorderedM i a
+consumeElement :: FromElement a => Name -> UnorderedM i a
 consumeElement name = do
   ma <- consumeElementOrAbsent name
   case ma of
@@ -81,7 +83,7 @@ consumeElement name = do
       throwError . parserError info $ "Missing " <> renderName name <> " element."
 
 -- | Parses `Maybe a` via `OrEmpty a`.
-consumeElementOrEmpty :: (FromElement a, Eq i) => Name -> UnorderedM i (Maybe a)
+consumeElementOrEmpty :: FromElement a => Name -> UnorderedM i (Maybe a)
 consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
 
 consumeElements :: (FromElement a, Eq i) => Name -> UnorderedM i [a]
@@ -91,19 +93,18 @@ consumeElements name = do
     Nothing -> pure []
     Just a -> (a :) <$> consumeElements name
 
-consumeChoiceElement :: forall a i. (FromChoiceElement a, Eq i) => UnorderedM i a
+consumeChoiceElement :: forall a i. FromChoiceElement a => UnorderedM i a
 consumeChoiceElement = do
   remaining@Element {children, info} <- get
-  let matchName node = do
-        NodeElement name el i <- pure node
-        p <- Map.lookup name fromChoiceElement
-        pure (p, name, el, i)
-  case mapMaybe matchName children of
-    ((p, name, el, i) : _) -> do
-      a <- UnorderedM . lift $ p el
-      put $ remaining {children = List.delete (NodeElement name el i) children}
-      pure a
-    [] ->
-      throwError . parserError info $
-        "Missing choice node (one of): "
-          <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+  let go _ [] =
+        throwError . parserError info $
+          "Missing choice node (one of): "
+            <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+      go skipped (node : rest) = case node of
+        NodeElement name el _
+          | Just p <- Map.lookup name fromChoiceElement -> do
+              a <- UnorderedM . lift $ p el
+              put $ remaining {children = reverse skipped <> rest}
+              pure a
+        _ -> go (node : skipped) rest
+  go [] children
