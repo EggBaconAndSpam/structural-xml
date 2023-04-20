@@ -1,6 +1,10 @@
 module Data.XML.Parse.Ordered
-  ( parseOrderedElement,
+  ( -- * A monad for parsing ordered elements
+    OrderedM (..),
+    parseOrderedElement,
     parseOrderedElementLax,
+
+    -- * Combinators
     consumeAttribute,
     consumeOptionalAttribute,
     consumeElement,
@@ -8,6 +12,10 @@ module Data.XML.Parse.Ordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
+
+    -- * Re-exports
+    module Data.XML.Types,
+    module Data.XML.Parse.Types,
   )
 where
 
@@ -20,6 +28,7 @@ import Data.XML.Parse.Types
 import Data.XML.Types
 import Text.XML (Name)
 
+-- | todo: state for keeping track of remaining nodes and attributes.
 newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
 

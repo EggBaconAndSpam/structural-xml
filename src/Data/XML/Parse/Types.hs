@@ -1,4 +1,29 @@
-module Data.XML.Parse.Types where
+module Data.XML.Parse.Types
+  ( -- * Parsers and errors
+    Parser,
+    ParserError (..),
+    parserError,
+    ElementZipper (..),
+    errorPath,
+    documentWithZipper,
+    elementWithZipper,
+
+    -- * Documents
+    FromDocument (..),
+    fromRootElement,
+
+    -- * Elements
+    FromElement (..),
+    OrEmpty (..),
+    FromChoiceElement (..),
+
+    -- * Content (in elements and attributes)
+    FromContent (..),
+    readContent,
+    parseContentElement,
+    parseContentElementLax,
+  )
+where
 
 import Control.Exception (Exception)
 import Control.Monad.State.Lazy

@@ -1,6 +1,10 @@
 module Data.XML.Parse.Unordered
-  ( parseUnorderedElement,
+  ( -- * A monad for parsing unordered elements
+    UnorderedM (..),
+    parseUnorderedElement,
     parseUnorderedElementLax,
+
+    -- * Combinators
     consumeAttribute,
     consumeOptionalAttribute,
     consumeElement,
@@ -8,6 +12,10 @@ module Data.XML.Parse.Unordered
     consumeElementOrEmpty,
     consumeElements,
     consumeChoiceElement,
+
+    -- * Re-exports
+    module Data.XML.Types,
+    module Data.XML.Parse.Types,
   )
 where
 
