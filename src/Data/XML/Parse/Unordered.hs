@@ -4,7 +4,7 @@ module Data.XML.Parse.Unordered
   ( -- * A monad for parsing unordered elements
     UnorderedM (..),
     parseUnorderedElement,
-    parseUnorderedElementLax,
+    parseUnorderedElementPartially,
 
     -- * Combinators
     consumeAttribute,
@@ -40,15 +40,15 @@ newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (Parser
 -- the element is not fully consumed.
 parseUnorderedElement :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElement p el@Element {info} = do
-  (el', a) <- parseUnorderedElementLax p el
+  (el', a) <- parseUnorderedElementPartially p el
   if isEmptyElement el'
     then pure a
     else throwError $ parserError info "Element not fully consumed!" -- todo: include unparsed remainder!
 
 -- | Parse an 'unordered' element (corresponding to an xml 'all'). Return the
 -- rest of the element that wasn't consumed.
-parseUnorderedElementLax :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
-parseUnorderedElementLax (UnorderedM p) el = swap <$> runStateT p el
+parseUnorderedElementPartially :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseUnorderedElementPartially (UnorderedM p) el = swap <$> runStateT p el
 
 consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> UnorderedM i (Maybe a)
 consumeOptionalAttribute name = do

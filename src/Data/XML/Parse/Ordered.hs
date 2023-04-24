@@ -4,7 +4,7 @@ module Data.XML.Parse.Ordered
   ( -- * A monad for parsing ordered elements
     OrderedM (..),
     parseOrderedElement,
-    parseOrderedElementLax,
+    parseOrderedElementPartially,
 
     -- * Combinators
     consumeAttribute,
@@ -40,15 +40,15 @@ newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserErro
 -- the element is not fully consumed.
 parseOrderedElement :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i a
 parseOrderedElement p el@Element {info} = do
-  (el', a) <- parseOrderedElementLax p el
+  (el', a) <- parseOrderedElementPartially p el
   if isEmptyElement el'
     then pure a
     else throwError $ parserError info "Element not fully consumed!" -- todo: include unparsed remainder!
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Return the
 -- rest of the element that wasn't consumed.
-parseOrderedElementLax :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
-parseOrderedElementLax (OrderedM p) el = swap <$> runStateT p el
+parseOrderedElementPartially :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseOrderedElementPartially (OrderedM p) el = swap <$> runStateT p el
 
 consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> OrderedM i (Maybe a)
 consumeOptionalAttribute name = do

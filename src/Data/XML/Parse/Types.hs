@@ -22,7 +22,7 @@ module Data.XML.Parse.Types
     FromContent (..),
     readContent,
     parseContentElement,
-    parseContentElementLax,
+    parseContentElementPartially,
   )
 where
 
@@ -196,23 +196,22 @@ deriving via ContentElement Int instance FromElement Int
 
 -- | Expects an element consisting of a single content node or no child nodes
 -- (which is treated as an empty content string). Fails if the element isn't
---  fully consumed, i.e. if the element has attributes.
+--  fully consumed, e.g. if the element has attributes.
 parseContentElement ::
   HasCallStack => (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
 parseContentElement p el@Element {info} = do
-  (leftovers, a) <- parseContentElementLax p el
+  (leftovers, a) <- parseContentElementPartially p el
   if isEmptyElement leftovers
     then pure a
     else Left $ parserError info "Failed to parse content element: element not completely consumed (unexpected attributes!)."
 
--- | Returns leftovers (i.e. attributes).
--- todo: Lax -> Partial/Part?
-parseContentElementLax ::
+-- | Returns the remains (i.e. attributes).
+parseContentElementPartially ::
   HasCallStack =>
   (Text -> i -> Parser i a) ->
   AnnotatedElement i ->
   Parser i (AnnotatedElement i, a)
-parseContentElementLax p el@Element {children, info} = do
+parseContentElementPartially p el@Element {children, info} = do
   (content, i) <- case children of
     [NodeContent c i] -> pure (c, i)
     [] -> pure ("", info)
