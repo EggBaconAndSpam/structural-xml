@@ -1,6 +1,7 @@
 module Data.XML.Unparse
   ( -- * classes
     ToDocument (..),
+    toRootElement,
     ToElement (..),
     ToContent (..),
     ToChoiceElement (..),
@@ -28,6 +29,9 @@ import Text.XML (Name)
 
 class ToDocument a where
   toDocument :: a -> Document
+
+toRootElement :: ToElement a => Name -> a -> Document
+toRootElement name a = Document {rootName = name, root = toElement a, info = ()}
 
 class ToElement a where
   toElement :: a -> Element

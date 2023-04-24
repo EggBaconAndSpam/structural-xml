@@ -95,7 +95,7 @@ consumeElement name = do
 consumeElementOrEmpty :: (HasCallStack, FromElement a) => Name -> UnorderedM i (Maybe a)
 consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
 
-consumeElements :: (HasCallStack, FromElement a, Eq i) => Name -> UnorderedM i [a]
+consumeElements :: (HasCallStack, FromElement a) => Name -> UnorderedM i [a]
 consumeElements name = do
   ma <- consumeElementOrAbsent name
   case ma of

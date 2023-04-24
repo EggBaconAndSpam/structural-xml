@@ -3,6 +3,7 @@ module Data.XML.Parse.Types
     Parser,
     ParserError (..),
     parserError,
+    prettyParserError,
     ElementZipper (..),
     errorPath,
     documentWithZipper,
@@ -90,7 +91,7 @@ elementWithZipper parent el = do
         NodeElement name child _ -> pure $ NodeElement name (elementWithZipper (Just (current, name)) child) current
 
 data ParserError i = ParserError
-  { callstack :: CallStack, -- todo
+  { callstack :: CallStack,
     info :: i,
     message :: String -- could turn into a sum?
   }
@@ -99,6 +100,14 @@ data ParserError i = ParserError
 
 parserError :: HasCallStack => i -> String -> ParserError i
 parserError info message = ParserError {callstack = callStack, ..}
+
+prettyParserError :: ParserError ElementZipper -> String
+prettyParserError ParserError {..} =
+  unlines
+    ( message :
+      "To get to the error location:" :
+      map ("  " <>) (reverse $ errorPath info)
+    )
 
 type Parser i a = Either (ParserError i) a
 

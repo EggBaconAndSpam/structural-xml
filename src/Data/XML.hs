@@ -1,7 +1,7 @@
 module Data.XML
   ( -- * Decoding and rendering
     decodeDocument,
-    renderDocument,
+    encodeDocument,
 
     -- * 'deriving via' helpers for deriving Read and Show
     ReadShowXmlDocument (..),
@@ -14,6 +14,7 @@ module Data.XML
   )
 where
 
+import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Text.Lazy
@@ -26,21 +27,12 @@ import Text.XML (def, parseText, renderText, rsPretty)
 decodeDocument :: (HasCallStack, FromDocument a) => Text -> Either String a
 decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
   Left err -> Left $ show err
-  Right conduitDoc -> do
-    let doc = documentWithZipper $ fromXmlConduit conduitDoc
-    case fromDocument doc of
-      Left ParserError {..} ->
-        Left $
-          unlines
-            ( message :
-              "To get to the error location in document:" :
-              map ("  " <>) (reverse $ errorPath info)
-            )
-            <> prettyCallStack callstack
-      Right a -> Right a
+  Right conduitDoc ->
+    first prettyParserError . fromDocument . documentWithZipper $
+      fromXmlConduit conduitDoc
 
-renderDocument :: ToDocument a => a -> Text
-renderDocument =
+encodeDocument :: ToDocument a => a -> Text
+encodeDocument =
   Text.Lazy.toStrict
     . renderText (def {rsPretty = True})
     . toXmlConduit
