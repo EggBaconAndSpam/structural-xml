@@ -4,6 +4,7 @@ module Data.XML.Parse.Ordered
   ( -- * A monad for parsing ordered elements
     OrderedM (..),
     parseOrderedElement,
+    parseOrderedElementKeepLeftovers,
     parseOrderedElementPartially,
 
     -- * Combinators
@@ -32,7 +33,6 @@ import Data.XML.Types
 import GHC.Stack
 import Text.XML (Name)
 
--- | todo: state for keeping track of remaining nodes and attributes.
 newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
 
@@ -40,15 +40,20 @@ newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserErro
 -- the element is not fully consumed.
 parseOrderedElement :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i a
 parseOrderedElement p el@Element {info} = do
-  (el', a) <- parseOrderedElementPartially p el
+  (el', a) <- parseOrderedElementKeepLeftovers p el
   if isEmptyElement el'
     then pure a
     else throwError $ parserError info "Element not fully consumed!" -- todo: include unparsed remainder!
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Return the
 -- rest of the element that wasn't consumed.
-parseOrderedElementPartially :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
-parseOrderedElementPartially (OrderedM p) el = swap <$> runStateT p el
+parseOrderedElementKeepLeftovers :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseOrderedElementKeepLeftovers (OrderedM p) el = swap <$> runStateT p el
+
+-- | Parse an 'ordered' element (corresponding to an xml 'all'). Don't complain
+-- about any unparsed nodes or attributes.
+parseOrderedElementPartially :: HasCallStack => OrderedM i a -> AnnotatedElement i -> Parser i a
+parseOrderedElementPartially p el = snd <$> parseOrderedElementKeepLeftovers p el
 
 consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> OrderedM i (Maybe a)
 consumeOptionalAttribute name = do

@@ -23,8 +23,9 @@ module Data.XML.Types
     -- * helpers
     renderName,
     stripAllWhitespaceContent,
-    stripWhitespaceContent,
-    stripNamespaces,
+    stripAllWhitespaceContent',
+    stripAllNamespaces,
+    stripAllNamespaces',
 
     -- * newtype wrappers
     ContentElement (..),
@@ -170,15 +171,15 @@ toXmlConduitElement name Element {..} =
 stripAllWhitespaceContent :: AnnotatedDocument i -> AnnotatedDocument i
 stripAllWhitespaceContent Document {..} = Document {root = go root, ..}
   where
-    go el = stripWhitespaceContent $ el {children = map goChild (children el)}
+    go el = stripAllWhitespaceContent' $ el {children = map goChild (children el)}
     goChild (NodeElement name el i) = NodeElement name (go el) i
     goChild (NodeContent content i) = NodeContent content i
 
 -- | Most of the time you will want to use `stripAllWhitespaceContent` instead
 -- to remove whitespace once at the top level! Use `stripWhitespaceContent` only
 -- if you expect to mix content and elements in weird ways.
-stripWhitespaceContent :: AnnotatedElement i -> AnnotatedElement i
-stripWhitespaceContent el =
+stripAllWhitespaceContent' :: AnnotatedElement i -> AnnotatedElement i
+stripAllWhitespaceContent' el =
   el {children = filter (not . isWhitespaceContent) $ children el}
   where
     isWhitespaceContent (NodeContent text _) = Text.all isSpace text
@@ -186,23 +187,24 @@ stripWhitespaceContent el =
 
 -- | Sometimes either you or whoever constructs your input doesn't care about
 -- namespaces and you need to drop them.
-stripNamespaces :: AnnotatedDocument i -> AnnotatedDocument i
-stripNamespaces doc@Document {rootName, root} =
+stripAllNamespaces :: AnnotatedDocument i -> AnnotatedDocument i
+stripAllNamespaces doc@Document {rootName, root} =
   doc
     { rootName = stripNamespace rootName,
-      root = stripElementNamespaces root
+      root = stripAllNamespaces' root
+    }
+
+stripAllNamespaces' :: AnnotatedElement i -> AnnotatedElement i
+stripAllNamespaces' el@Element {attributes, children} =
+  el
+    { attributes = Map.mapKeys stripNamespace attributes,
+      children = map stripNodeNamespaces children
     }
   where
-    stripNamespace :: Name -> Name
-    stripNamespace name = name {nameNamespace = Nothing}
-
-    stripElementNamespaces el@Element {attributes, children} =
-      el
-        { attributes = Map.mapKeys stripNamespace attributes,
-          children = map stripNodeNamespaces children
-        }
-
     stripNodeNamespaces = \case
       NodeElement name element i ->
-        NodeElement (stripNamespace name) (stripElementNamespaces element) i
+        NodeElement (stripNamespace name) (stripAllNamespaces' element) i
       NodeContent content i -> NodeContent content i
+
+stripNamespace :: Name -> Name
+stripNamespace name = name {nameNamespace = Nothing}

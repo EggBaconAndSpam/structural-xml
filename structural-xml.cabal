@@ -47,6 +47,7 @@ library
   ghc-options: -Weverything -Wno-missing-import-lists -Wno-implicit-prelude -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-missing-safe-haskell-mode -Wno-prepositive-qualified-module -Wno-all-missed-specialisations
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , containers
     , mtl
     , text

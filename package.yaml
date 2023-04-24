@@ -12,6 +12,7 @@ dependencies:
 - text
 - xml-conduit
 - mtl
+- bytestring
 
 default-extensions:
 - DeriveGeneric

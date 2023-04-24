@@ -2,6 +2,12 @@ module Data.XML
   ( -- * Decoding and rendering
     decodeDocument,
     encodeDocument,
+    decodeDocumentLT,
+    encodeDocumentLT,
+    decodeDocumentBS,
+    encodeDocumentBS,
+    decodeDocumentLBS,
+    encodeDocumentLBS,
 
     -- * 'deriving via' helpers for deriving Read and Show
     ReadShowXmlDocument (..),
@@ -15,17 +21,42 @@ module Data.XML
 where
 
 import Data.Bifunctor (first)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy as ByteString.Lazy
 import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy as Text.Lazy
 import Data.XML.Parse.Types
 import Data.XML.Types
 import Data.XML.Unparse
 import GHC.Stack
-import Text.XML (def, parseText, renderText, rsPretty)
+import Text.XML (def, parseLBS, parseText, renderLBS, renderText, rsPretty)
 
 decodeDocument :: (HasCallStack, FromDocument a) => Text -> Either String a
 decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
+  Left err -> Left $ show err
+  Right conduitDoc ->
+    first prettyParserError . fromDocument . documentWithZipper $
+      fromXmlConduit conduitDoc
+
+decodeDocumentLT :: (HasCallStack, FromDocument a) => LT.Text -> Either String a
+decodeDocumentLT raw = case parseText def raw of
+  Left err -> Left $ show err
+  Right conduitDoc ->
+    first prettyParserError . fromDocument . documentWithZipper $
+      fromXmlConduit conduitDoc
+
+decodeDocumentBS :: (HasCallStack, FromDocument a) => ByteString -> Either String a
+decodeDocumentBS raw = case parseLBS def (ByteString.Lazy.fromStrict raw) of
+  Left err -> Left $ show err
+  Right conduitDoc ->
+    first prettyParserError . fromDocument . documentWithZipper $
+      fromXmlConduit conduitDoc
+
+decodeDocumentLBS :: (HasCallStack, FromDocument a) => BL.ByteString -> Either String a
+decodeDocumentLBS raw = case parseLBS def raw of
   Left err -> Left $ show err
   Right conduitDoc ->
     first prettyParserError . fromDocument . documentWithZipper $
@@ -35,6 +66,25 @@ encodeDocument :: ToDocument a => a -> Text
 encodeDocument =
   Text.Lazy.toStrict
     . renderText (def {rsPretty = True})
+    . toXmlConduit
+    . toDocument
+
+encodeDocumentLT :: ToDocument a => a -> LT.Text
+encodeDocumentLT =
+  renderText (def {rsPretty = True})
+    . toXmlConduit
+    . toDocument
+
+encodeDocumentBS :: ToDocument a => a -> ByteString
+encodeDocumentBS =
+  ByteString.Lazy.toStrict
+    . renderLBS (def {rsPretty = True})
+    . toXmlConduit
+    . toDocument
+
+encodeDocumentLBS :: ToDocument a => a -> BL.ByteString
+encodeDocumentLBS =
+  renderLBS (def {rsPretty = True})
     . toXmlConduit
     . toDocument
 

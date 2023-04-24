@@ -5,6 +5,7 @@ module Data.XML.Parse.Unordered
     UnorderedM (..),
     parseUnorderedElement,
     parseUnorderedElementPartially,
+    parseUnorderedElementKeepLeftovers,
 
     -- * Combinators
     consumeAttribute,
@@ -40,15 +41,20 @@ newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (Parser
 -- the element is not fully consumed.
 parseUnorderedElement :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElement p el@Element {info} = do
-  (el', a) <- parseUnorderedElementPartially p el
+  (el', a) <- parseUnorderedElementKeepLeftovers p el
   if isEmptyElement el'
     then pure a
     else throwError $ parserError info "Element not fully consumed!" -- todo: include unparsed remainder!
 
 -- | Parse an 'unordered' element (corresponding to an xml 'all'). Return the
 -- rest of the element that wasn't consumed.
-parseUnorderedElementPartially :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
-parseUnorderedElementPartially (UnorderedM p) el = swap <$> runStateT p el
+parseUnorderedElementKeepLeftovers :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseUnorderedElementKeepLeftovers (UnorderedM p) el = swap <$> runStateT p el
+
+-- | Parse an 'unordered' element (corresponding to an xml 'all'). Don't
+-- complain about any unparsed nodes or attributes.
+parseUnorderedElementPartially :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i a
+parseUnorderedElementPartially p el = snd <$> parseUnorderedElementKeepLeftovers p el
 
 consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> UnorderedM i (Maybe a)
 consumeOptionalAttribute name = do

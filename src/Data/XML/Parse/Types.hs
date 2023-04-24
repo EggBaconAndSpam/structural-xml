@@ -15,7 +15,6 @@ module Data.XML.Parse.Types
 
     -- * Elements
     FromElement (..),
-    OrEmpty (..),
     FromChoiceElement (..),
 
     -- * Content (in elements and attributes)
@@ -23,6 +22,7 @@ module Data.XML.Parse.Types
     readContent,
     parseContentElement,
     parseContentElementPartially,
+    parseContentElementKeepLeftovers,
   )
 where
 
@@ -200,21 +200,30 @@ deriving via ContentElement Int instance FromElement Int
 parseContentElement ::
   HasCallStack => (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
 parseContentElement p el@Element {info} = do
-  (leftovers, a) <- parseContentElementPartially p el
+  (leftovers, a) <- parseContentElementKeepLeftovers p el
   if isEmptyElement leftovers
     then pure a
     else Left $ parserError info "Failed to parse content element: element not completely consumed (unexpected attributes!)."
 
--- | Returns the remains (i.e. attributes).
-parseContentElementPartially ::
+-- | Returns the leftovers (i.e. any attributes).
+parseContentElementKeepLeftovers ::
   HasCallStack =>
   (Text -> i -> Parser i a) ->
   AnnotatedElement i ->
   Parser i (AnnotatedElement i, a)
-parseContentElementPartially p el@Element {children, info} = do
+parseContentElementKeepLeftovers p el@Element {children, info} = do
   (content, i) <- case children of
     [NodeContent c i] -> pure (c, i)
     [] -> pure ("", info)
     _ -> Left $ parserError info "Failed to parse content element: unexpected child nodes."
   a <- p content i
   pure (el {children = []}, a)
+
+-- | Ignores attributes.
+parseContentElementPartially ::
+  HasCallStack =>
+  (Text -> i -> Parser i a) ->
+  AnnotatedElement i ->
+  Parser i a
+parseContentElementPartially p el =
+  snd <$> parseContentElementKeepLeftovers p el
