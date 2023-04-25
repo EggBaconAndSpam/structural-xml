@@ -4,10 +4,11 @@ module Data.XML.Parse.Types
     ParserError (..),
     parserError,
     prettyParserError,
-    ElementZipper (..),
-    errorPath,
-    documentWithZipper,
-    elementWithZipper,
+    prettyParserErrorWithCallStack,
+    Location,
+    printPath,
+    annotateDocument,
+    annotateElement,
 
     -- * Documents
     FromDocument (..),
@@ -27,68 +28,15 @@ module Data.XML.Parse.Types
 where
 
 import Control.Exception (Exception)
-import Control.Monad.State.Lazy
 import Data.Map (Map)
-import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Data.XML.Parse.Location
 import Data.XML.Types
 import GHC.Stack
 import Text.Read (readMaybe)
 import Text.XML (Name)
 import Type.Reflection (Typeable, typeRep)
-
--- | Almost as good as textual locations...
-data ElementZipper = ElementZipper
-  { parent :: Maybe (ElementZipper, Name),
-    before :: Element, -- reversed children
-    after :: Element
-  }
-
-errorPath :: ElementZipper -> [String]
-errorPath ElementZipper {parent, ..} = case children before of
-  child : rest ->
-    ( case child of
-        NodeElement name _ _ -> "skip node \"" <> renderName name <> "\""
-        NodeContent _ _ -> "skip content node"
-    ) :
-    errorPath ElementZipper {before = before {children = rest}, ..}
-  [] -> case parent of
-    Nothing -> []
-    Just (parent', name) ->
-      ("enter node \"" <> renderName name <> "\"") :
-      errorPath parent'
-
-documentWithZipper :: Document -> AnnotatedDocument ElementZipper
-documentWithZipper Document {..} =
-  Document
-    { root = elementWithZipper (Just (rootZipper, rootName)) root,
-      info = rootZipper,
-      ..
-    }
-  where
-    rootZipper = ElementZipper {parent = Nothing, before = emptyElement, after = root}
-
-elementWithZipper :: Maybe (ElementZipper, Name) -> Element -> AnnotatedElement ElementZipper
-elementWithZipper parent el = do
-  Element
-    { attributes = Map.map (\(t, _) -> (t, initialState)) $ attributes el,
-      children = evalState (mapM nodeWithZipper $ children el) initialState,
-      info = initialState
-    }
-  where
-    initialState = ElementZipper {before = emptyElement, after = el, parent}
-
-    nodeWithZipper node = do
-      current@ElementZipper {before, after} <- get
-      put $
-        current
-          { before = Element {attributes = mempty, children = [node], info = ()} <> before,
-            after = after {children = drop 1 $ children after}
-          }
-      case node of
-        NodeContent text _ -> pure $ NodeContent text current
-        NodeElement name child _ -> pure $ NodeElement name (elementWithZipper (Just (current, name)) child) current
 
 data ParserError i = ParserError
   { callstack :: CallStack,
@@ -101,13 +49,17 @@ data ParserError i = ParserError
 parserError :: HasCallStack => i -> String -> ParserError i
 parserError info message = ParserError {callstack = callStack, ..}
 
-prettyParserError :: ParserError ElementZipper -> String
+prettyParserError :: ParserError Location -> String
 prettyParserError ParserError {..} =
   unlines
     ( message :
       "To get to the error location:" :
-      map ("  " <>) (reverse $ errorPath info)
+      map ("  " <>) (printPath info)
     )
+
+prettyParserErrorWithCallStack :: ParserError Location -> String
+prettyParserErrorWithCallStack err@ParserError {callstack} =
+  prettyParserError err <> prettyCallStack callstack
 
 type Parser i a = Either (ParserError i) a
 

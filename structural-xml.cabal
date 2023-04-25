@@ -6,10 +6,10 @@ cabal-version: 1.12
 
 name:           structural-xml
 version:        0.1.0.0
-description:    Structural parsing and generation of XML data.
-author:         Federik Ramcke <frederik.ramcke@eirforsakring.se>
-maintainer:     Federik Ramcke <frederik.ramcke@eirforsakring.se>
-copyright:      (c) 2022 Frederik Ramcke, Eir Försäkring AB
+description:    Structural XML parsing and unparsing.
+author:         Frederik Ramcke <frederikramcke@mailbox.org>
+maintainer:     Frederik Ramcke <frederikramcke@mailbox.org>
+copyright:      (c) 2023 Frederik Ramcke, Eir Försäkring AB
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -17,6 +17,7 @@ build-type:     Simple
 library
   exposed-modules:
       Data.XML
+      Data.XML.Parse.Location
       Data.XML.Parse.Ordered
       Data.XML.Parse.Types
       Data.XML.Parse.Unordered
