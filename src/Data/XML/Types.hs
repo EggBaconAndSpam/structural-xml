@@ -79,8 +79,7 @@ data AnnotatedNode i
 newtype ContentElement a = ContentElement {content :: a}
   deriving stock (Show, Eq, Ord, Generic)
 
--- | Encodes `Nothing` as emptyElement. Parses the empty element as `Nothing`,
--- unless the parser for `a` succeeds on the empty element.
+-- | Encodes `Nothing` as emptyElement. Parses the empty element as `Nothing`.
 newtype OrEmpty a = OrEmpty {unOrEmpty :: Maybe a}
 
 instance Semigroup Element where

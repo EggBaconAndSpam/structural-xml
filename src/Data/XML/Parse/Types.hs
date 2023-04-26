@@ -90,12 +90,10 @@ readContent text i = case readMaybe $ Text.unpack text of
         <> show (typeRep @a)
 
 instance FromElement a => FromElement (OrEmpty a) where
-  fromElement el = case fromElement el of
-    Right a -> pure . OrEmpty $ Just a
-    Left err ->
-      if isEmptyElement el
-        then pure $ OrEmpty Nothing
-        else Left err
+  fromElement el =
+    if isEmptyElement el
+      then pure $ OrEmpty Nothing
+      else OrEmpty . Just <$> fromElement el
 
 -- | A 'choice' element corresponds to the 'choice' schema element, which encodes sum types:
 --
