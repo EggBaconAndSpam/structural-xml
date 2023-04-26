@@ -14,7 +14,9 @@ module Data.XML.Unparse
     appendContent,
     appendElement,
     appendElementOrEmpty,
+    appendChoiceElement,
     addAttribute,
+    module Text.XML,
   )
 where
 
@@ -63,11 +65,11 @@ class ToContent a where
 --
 -- data Example = A Something | B SomethingElse
 class ToChoiceElement a where
-  toElementChoice :: a -> (Name, Element)
+  toChoiceElement :: a -> (Name, Element)
 
 {- Constructing elements -}
 -- Note that the Element state has its child nodes in reverse order!
-newtype ConstructM a = ConstructM {unConstructM :: State Element a}
+newtype ConstructM a = ConstructM (State Element a)
   deriving newtype (Functor, Applicative, Monad, MonadState Element)
 
 -- | Construct an element from the empty element by appending child elements,
@@ -92,6 +94,12 @@ appendElementOrEmpty name ma = ConstructM . modify $ \Element {..} ->
 addAttribute :: ToContent a => Name -> a -> ConstructM ()
 addAttribute name a = ConstructM . modify $ \Element {..} ->
   Element {attributes = Map.insert name (toContent a, ()) attributes, ..}
+
+appendChoiceElement :: ToChoiceElement a => a -> ConstructM ()
+appendChoiceElement a = ConstructM . modify $ \Element {..} ->
+  Element {children = NodeElement name el () : children, ..}
+  where
+    (name, el) = toChoiceElement a
 
 {- Instances -}
 

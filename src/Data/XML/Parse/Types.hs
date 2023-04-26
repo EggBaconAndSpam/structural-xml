@@ -1,24 +1,13 @@
 module Data.XML.Parse.Types
-  ( -- * Parsers and errors
-    Parser,
+  ( Parser,
     ParserError (..),
     parserError,
     prettyParserError,
     prettyParserErrorWithCallStack,
-    Location,
-    printPath,
-    annotateDocument,
-    annotateElement,
-
-    -- * Documents
     FromDocument (..),
     fromRootElement,
-
-    -- * Elements
     FromElement (..),
     FromChoiceElement (..),
-
-    -- * Content (in elements and attributes)
     FromContent (..),
     readContent,
     parseContentElement,

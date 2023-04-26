@@ -1,5 +1,62 @@
+{-
+How to use this library
+  TODO!
+
+Decoding and encoding XML documents
+    decodeDocument, encodeDocument, decodeDocumentLT, encodeDocumentLT, decodeDocumentBS, encodeDocumentBS, decodeDocumentLBS, encodeDocumentLBS,
+
+Deriving via helpers for Read and Show
+ReadShowXmlDocument, ReadShowXmlElement
+
+Representing XML
+
+    XML document types
+    AnnotatedDocument, AnnotatedElement, AnnotatedNode, Document, Element, Node, unAnnotateDocument, emptyElement, isEmptyElement
+
+    helpers
+    renderName, stripAllWhitespaceContent, stripAllWhitespaceContent', stripAllNamespaces, stripAllNamespaces',
+
+    Conversion to and from xml-conduit types
+    fromXmlConduit, fromXmlConduitKeepWhitespaceContent, fromXmlConduitElement, toXmlConduit, toXmlConduitElement
+
+Parsing and Unparsing XML
+
+    newtype wrappers
+    ContentElement, OrEmpty
+
+    Unparsing
+
+        Classes
+        ToDocument, toRootElement, ToElement, ToContent, ToChoiceElement
+
+        Constructing elements
+        ConstructM, constructElement, appendContent, appendElement, appendElementOrEmpty, appendChoiceElement,addAttribute,
+
+    Parsing
+
+        Parser, ParserError, prettyParserError, prettyParserErrorWithCallStack
+
+        Classes
+        FromDocument, fromRootElement, FromElement, FromChoiceElement (..), FromContent, readContent
+
+        Parsing content and attributes
+        parseContentElement, parseContentElementPartially, parseContentElementKeepLeftovers,
+
+        Parsing Ordered elements (c.f. 'sequence')
+        -> Data.XML.Parse.Ordered
+
+        Parsing Unordered elements (c.f. 'sequence')
+        -> Data.XML.Parse.Unordered
+
+-}
 module Data.XML
-  ( -- * Decoding and rendering
+  ( -- * Re-exports. TODO: Explicit re-exports!
+    module Data.XML.Types,
+    module Data.XML.Parse.Types,
+    module Data.XML.Parse.Location,
+    module Data.XML.Unparse,
+
+    -- * Decoding and encoding XML documents
     decodeDocument,
     encodeDocument,
     decodeDocumentLT,
@@ -9,14 +66,9 @@ module Data.XML
     decodeDocumentLBS,
     encodeDocumentLBS,
 
-    -- * 'deriving via' helpers for deriving Read and Show
+    -- * @deriving via@ helpers for @Read@ and @Show@ instances
     ReadShowXmlDocument (..),
     ReadShowXmlElement (..),
-
-    -- * Re-exports
-    module Data.XML.Types,
-    module Data.XML.Parse.Types,
-    module Data.XML.Unparse,
   )
 where
 
@@ -28,38 +80,39 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy as Text.Lazy
+import Data.XML.Parse.Location
 import Data.XML.Parse.Types
 import Data.XML.Types
 import Data.XML.Unparse
 import GHC.Stack
-import Text.XML (def, parseLBS, parseText, renderLBS, renderText, rsPretty)
+import Text.XML (def, parseLBS, parseText, renderLBS, renderText, rsPretty, rsXMLDeclaration)
 
 decodeDocument :: (HasCallStack, FromDocument a) => Text -> Either String a
 decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . documentWithZipper $
+    first prettyParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentLT :: (HasCallStack, FromDocument a) => LT.Text -> Either String a
 decodeDocumentLT raw = case parseText def raw of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . documentWithZipper $
+    first prettyParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentBS :: (HasCallStack, FromDocument a) => ByteString -> Either String a
 decodeDocumentBS raw = case parseLBS def (ByteString.Lazy.fromStrict raw) of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . documentWithZipper $
+    first prettyParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentLBS :: (HasCallStack, FromDocument a) => BL.ByteString -> Either String a
 decodeDocumentLBS raw = case parseLBS def raw of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . documentWithZipper $
+    first prettyParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 encodeDocument :: ToDocument a => a -> Text
@@ -108,6 +161,6 @@ deriving via ReadShowXmlDocument (ReadShowXmlElement a) instance FromElement a =
 
 instance ToElement a => Show (ReadShowXmlElement a) where
   show (ReadShowXmlElement a) =
-    Text.Lazy.unpack . renderText (def {rsPretty = True}) $
+    Text.Lazy.unpack . renderText (def {rsPretty = True, rsXMLDeclaration = False}) $
       toXmlConduit
         Document {root = toElement a, rootName = "root_element", info = ()}
