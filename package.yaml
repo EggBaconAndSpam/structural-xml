@@ -1,10 +1,10 @@
 name:                structural-xml
-version:             0.1.0.0
-description:         Structural parsing and generation of XML data.
+version:             0.2.0.0
+description:         Structural XML parsing and unparsing.
 license:             BSD3
 license-file:        LICENSE
-copyright:           (c) 2022 Frederik Ramcke, Eir Försäkring AB
-author:              Federik Ramcke <frederik.ramcke@eirforsakring.se>
+copyright:           (c) 2023 Frederik Ramcke, Eir Försäkring AB
+author:              Frederik Ramcke <frederikramcke@mailbox.org>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -12,6 +12,7 @@ dependencies:
 - text
 - xml-conduit
 - mtl
+- bytestring
 
 default-extensions:
 - DeriveGeneric
@@ -27,6 +28,10 @@ default-extensions:
 - StandaloneDeriving
 - TypeApplications
 - RecordWildCards
+- StrictData
+- DuplicateRecordFields
+- FlexibleInstances
+- NamedFieldPuns
 
 ghc-options:
 - -Weverything
