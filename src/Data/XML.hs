@@ -118,26 +118,26 @@ decodeDocumentLBS raw = case parseLBS def raw of
 encodeDocument :: ToDocument a => a -> Text
 encodeDocument =
   Text.Lazy.toStrict
-    . renderText (def {rsPretty = True})
+    . renderText def
     . toXmlConduit
     . toDocument
 
 encodeDocumentLT :: ToDocument a => a -> LT.Text
 encodeDocumentLT =
-  renderText (def {rsPretty = True})
+  renderText def
     . toXmlConduit
     . toDocument
 
 encodeDocumentBS :: ToDocument a => a -> ByteString
 encodeDocumentBS =
   ByteString.Lazy.toStrict
-    . renderLBS (def {rsPretty = True})
+    . renderLBS def
     . toXmlConduit
     . toDocument
 
 encodeDocumentLBS :: ToDocument a => a -> BL.ByteString
 encodeDocumentLBS =
-  renderLBS (def {rsPretty = True})
+  renderLBS def
     . toXmlConduit
     . toDocument
 
