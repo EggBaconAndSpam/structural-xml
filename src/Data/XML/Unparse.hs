@@ -32,17 +32,11 @@ import Text.XML (Name)
 class ToDocument a where
   toDocument :: a -> Document
 
-instance ToDocument (AnnotatedDocument i) where
-  toDocument = unAnnotateDocument
-
 toRootElement :: ToElement a => Name -> a -> Document
 toRootElement name a = Document {rootName = name, root = toElement a, info = ()}
 
 class ToElement a where
   toElement :: a -> Element
-
-instance ToElement (AnnotatedElement i) where
-  toElement = unAnnotateElement
 
 -- | Textual 'content' appears either inside elements, e.g.
 --
@@ -109,14 +103,17 @@ appendChoiceElement a = ConstructM . modify $ \Element {..} ->
 
 {- Instances -}
 
+instance ToDocument (AnnotatedDocument i) where
+  toDocument = unAnnotateDocument
+
+instance ToElement (AnnotatedElement i) where
+  toElement = unAnnotateElement
+
 instance ToContent Text where
   toContent = id
 
 instance ToContent Int where
   toContent = Text.pack . show
-
-instance ToElement Element where
-  toElement = id
 
 instance ToContent a => ToElement (ContentElement a) where
   toElement (ContentElement a) =
