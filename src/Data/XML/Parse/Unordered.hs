@@ -28,10 +28,10 @@ import Control.Monad.State.Strict
 import Data.List (intercalate)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
+import Data.XML
 import Data.XML.Parse.Types
 import Data.XML.Types
 import GHC.Stack
-import Text.XML (Name)
 
 -- Quadratic behaviour in number of children. Could be improved, but probably not an issue.
 newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
@@ -39,21 +39,24 @@ newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (Parser
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
-parseUnorderedElement :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i a
+parseUnorderedElement :: (HasCallStack) => UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElement p el@Element {info} = do
   (el', a) <- parseUnorderedElementKeepLeftovers p el
   if isEmptyElement el'
     then pure a
-    else throwError $ parserError info "Element not fully consumed!" -- todo: include unparsed remainder!
+    else
+      throwError
+        . parserError info
+        $ "Element not fully consumed! Leftovers: " <> show (ReadShowXmlElement el')
 
 -- | Parse an 'unordered' element (corresponding to an xml 'all'). Return the
 -- rest of the element that wasn't consumed.
-parseUnorderedElementKeepLeftovers :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
+parseUnorderedElementKeepLeftovers :: (HasCallStack) => UnorderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
 parseUnorderedElementKeepLeftovers (UnorderedM p) el = swap <$> runStateT p el
 
 -- | Parse an 'unordered' element (corresponding to an xml 'all'). Don't
 -- complain about any unparsed nodes or attributes.
-parseUnorderedElementPartially :: HasCallStack => UnorderedM i a -> AnnotatedElement i -> Parser i a
+parseUnorderedElementPartially :: (HasCallStack) => UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElementPartially p el = snd <$> parseUnorderedElementKeepLeftovers p el
 
 consumeOptionalAttribute :: (HasCallStack, FromContent a) => Name -> UnorderedM i (Maybe a)
@@ -82,9 +85,9 @@ consumeElementOrAbsent name = do
       go skipped (node : rest) = case node of
         NodeElement name' el _
           | name == name' -> do
-            a <- UnorderedM . lift $ fromElement el
-            put $ remaining {children = reverse skipped <> rest}
-            pure $ Just a
+              a <- UnorderedM . lift $ fromElement el
+              put $ remaining {children = reverse skipped <> rest}
+              pure $ Just a
         _ -> go (node : skipped) rest
   go [] children
 
@@ -118,13 +121,13 @@ consumeChoiceElement = do
       go skipped (node : rest) = case node of
         NodeElement name el _
           | Just p <- Map.lookup name fromChoiceElement -> do
-            a <- UnorderedM . lift $ p el
-            put $ remaining {children = reverse skipped <> rest}
-            pure a
+              a <- UnorderedM . lift $ p el
+              put $ remaining {children = reverse skipped <> rest}
+              pure a
         _ -> go (node : skipped) rest
   go [] children
 
-consumeRemainingElements :: HasCallStack => UnorderedM i [(Name, AnnotatedElement i)]
+consumeRemainingElements :: (HasCallStack) => UnorderedM i [(Name, AnnotatedElement i)]
 consumeRemainingElements = do
   remaining@Element {children} <- get
   let (rest, res) = go [] children
