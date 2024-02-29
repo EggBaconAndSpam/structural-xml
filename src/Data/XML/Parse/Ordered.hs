@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RoleAnnotations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Data.XML.Parse.Ordered
@@ -14,8 +16,9 @@ module Data.XML.Parse.Ordered
     consumeElementOrAbsent,
     consumeElementOrEmpty,
     consumeElements,
-    consumeChoiceElement,
+    FromChoiceElement (..),
     consumeRemainingElements,
+    consumeLeftovers,
 
     -- * Re-exports
     module Data.XML.Types,
@@ -26,7 +29,7 @@ where
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.List (intercalate)
+import Data.Bifunctor (first)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML
@@ -34,8 +37,42 @@ import Data.XML.Parse.Types
 import Data.XML.Types
 import GHC.Stack
 
+{-
+To be able to newtype derive FromChoiceElement we need the `a` parameter to be
+`representational`, but with the following definition we get `nominal` instead.
+
 newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
   deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
+-}
+type role OrderedM representational representational
+
+newtype OrderedM i a = OrderedM (AnnotatedElement i -> Either (ParserError i) (a, AnnotatedElement i))
+
+instance Functor (OrderedM i) where
+  fmap f (OrderedM m) = OrderedM (fmap (first f) . m)
+
+instance Applicative (OrderedM i) where
+  pure a = OrderedM (\el -> Right (a, el))
+  OrderedM mf <*> OrderedM ma = OrderedM $ \el -> do
+    (f, el') <- mf el
+    (a, el'') <- ma el'
+    pure (f a, el'')
+
+instance Monad (OrderedM i) where
+  OrderedM ma >>= fm = OrderedM $ \el -> do
+    (a, el') <- ma el
+    let OrderedM m = fm a
+    m el'
+
+instance MonadError (ParserError i) (OrderedM i) where
+  throwError e = OrderedM $ \_ -> Left e
+  catchError (OrderedM m) handle = OrderedM $ \el ->
+    case m el of
+      Left e -> let OrderedM h = handle e in h el
+      Right a -> pure a
+
+instance MonadState (AnnotatedElement i) (OrderedM i) where
+  state f = OrderedM $ \el -> Right $ f el
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
@@ -52,7 +89,7 @@ parseOrderedElement p el@Element {info} = do
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Return the
 -- rest of the element that wasn't consumed.
 parseOrderedElementKeepLeftovers :: (HasCallStack) => OrderedM i a -> AnnotatedElement i -> Parser i (AnnotatedElement i, a)
-parseOrderedElementKeepLeftovers (OrderedM p) el = swap <$> runStateT p el
+parseOrderedElementKeepLeftovers (OrderedM p) el = swap <$> p el
 
 -- | Parse an 'ordered' element (corresponding to an xml 'all'). Don't complain
 -- about any unparsed nodes or attributes.
@@ -65,7 +102,7 @@ consumeOptionalAttribute name = do
   case Map.lookup name attributes of
     Nothing -> pure Nothing
     Just (text, i) -> do
-      a <- OrderedM . lift $ fromContent text i
+      a <- either throwError pure $ fromContent text i
       put $ el {attributes = Map.delete name attributes}
       pure $ Just a
 
@@ -84,7 +121,7 @@ consumeElementOrAbsent name = do
   case children of
     NodeElement name' el _ : rest
       | name == name' -> do
-          a <- OrderedM . lift $ fromElement el
+          a <- either throwError pure $ fromElement el
           put $ remaining {children = rest}
           pure $ Just a
       | otherwise -> pure Nothing
@@ -100,7 +137,7 @@ consumeElement name = do
   case children of
     NodeElement name' el i : rest
       | name == name' -> do
-          a <- OrderedM . lift $ fromElement el
+          a <- either throwError pure $ fromElement el
           put $ remaining {children = rest}
           pure a
       | otherwise ->
@@ -116,9 +153,9 @@ consumeElement name = do
           <> renderName name
     [] -> throwError $ parserError info $ "Missing node (reached end of element): " <> renderName name
 
--- | Parses `Maybe a` via `OrEmpty a`.
+-- | Parses `Maybe a` via `MaybeEmpty a`.
 consumeElementOrEmpty :: (HasCallStack, FromElement a) => Name -> OrderedM i (Maybe a)
-consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
+consumeElementOrEmpty name = unMaybeEmpty <$> consumeElement name
 
 consumeElements :: (HasCallStack, FromElement a) => Name -> OrderedM i [a]
 consumeElements name = do
@@ -127,22 +164,29 @@ consumeElements name = do
     Nothing -> pure []
     Just a -> (a :) <$> consumeElements name
 
+class FromChoiceElement a where
+  -- separate FromOrderedChoiceElement, FromUnorderedChoiceElement
+  -- HasCallStack => OrderedM a
+  -- better: only in OrderedM (not as useful perhaps in UnorderedM)
+  consumeChoiceElement :: forall i. (HasCallStack) => OrderedM i a
+
+{-
 consumeChoiceElement :: forall a i. (HasCallStack, FromChoiceElement a) => OrderedM i a
 consumeChoiceElement = do
   remaining@Element {children, info} <- get
   case children of
     NodeElement name el i : rest
       | Just p <- Map.lookup name fromChoiceElement -> do
-          a <- OrderedM . lift $ p el
-          put $ remaining {children = rest}
-          pure a
+        a <- either throwError pure $ p el
+        put $ remaining {children = rest}
+        pure a
       | otherwise ->
-          throwError . parserError i $
-            "Unexpected node! Expected (one of) "
-              <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
-              <> " but found "
-              <> renderName name
-              <> " instead"
+        throwError . parserError i $
+          "Unexpected node! Expected (one of) "
+            <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
+            <> " but found "
+            <> renderName name
+            <> " instead"
     NodeContent _ i : _ ->
       throwError . parserError i $
         "Unexpected content node when parsing ordered element! Expected (one of) "
@@ -151,7 +195,7 @@ consumeChoiceElement = do
       throwError . parserError info $
         "Missing choice node (one of): "
           <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
-
+-}
 consumeRemainingElements :: (HasCallStack) => OrderedM i [(Name, AnnotatedElement i)]
 consumeRemainingElements = do
   remaining@Element {children} <- get
@@ -162,3 +206,9 @@ consumeRemainingElements = do
         "Unexpected content node when parsing ordered element! When parsing remaining child elements."
   put $ remaining {children = []}
   pure result
+
+consumeLeftovers :: OrderedM i Leftovers
+consumeLeftovers = do
+  remaining <- get
+  put remaining {children = mempty, attributes = mempty}
+  pure . Leftovers $ unAnnotateElement remaining

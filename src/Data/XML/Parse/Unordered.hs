@@ -14,8 +14,9 @@ module Data.XML.Parse.Unordered
     consumeElementOrAbsent,
     consumeElementOrEmpty,
     consumeElements,
-    consumeChoiceElement,
+    -- consumeChoiceElement,
     consumeRemainingElements,
+    consumeLeftovers,
 
     -- * Re-exports
     module Data.XML.Types,
@@ -100,9 +101,9 @@ consumeElement name = do
       Element {info} <- get
       throwError . parserError info $ "Missing " <> renderName name <> " element."
 
--- | Parses `Maybe a` via `OrEmpty a`.
+-- | Parses `Maybe a` via `MaybeEmpty a`.
 consumeElementOrEmpty :: (HasCallStack, FromElement a) => Name -> UnorderedM i (Maybe a)
-consumeElementOrEmpty name = unOrEmpty <$> consumeElement name
+consumeElementOrEmpty name = unMaybeEmpty <$> consumeElement name
 
 consumeElements :: (HasCallStack, FromElement a) => Name -> UnorderedM i [a]
 consumeElements name = do
@@ -111,6 +112,7 @@ consumeElements name = do
     Nothing -> pure []
     Just a -> (a :) <$> consumeElements name
 
+{-
 consumeChoiceElement :: forall a i. (HasCallStack, FromChoiceElement a) => UnorderedM i a
 consumeChoiceElement = do
   remaining@Element {children, info} <- get
@@ -121,12 +123,12 @@ consumeChoiceElement = do
       go skipped (node : rest) = case node of
         NodeElement name el _
           | Just p <- Map.lookup name fromChoiceElement -> do
-              a <- UnorderedM . lift $ p el
-              put $ remaining {children = reverse skipped <> rest}
-              pure a
+            a <- UnorderedM . lift $ p el
+            put $ remaining {children = reverse skipped <> rest}
+            pure a
         _ -> go (node : skipped) rest
   go [] children
-
+-}
 consumeRemainingElements :: (HasCallStack) => UnorderedM i [(Name, AnnotatedElement i)]
 consumeRemainingElements = do
   remaining@Element {children} <- get
@@ -140,3 +142,9 @@ consumeRemainingElements = do
         let (skipped', result) = go skipped rest
          in (skipped', (name, el) : result)
       _ -> go (node : skipped) rest
+
+consumeLeftovers :: UnorderedM i Leftovers
+consumeLeftovers = do
+  remaining <- get
+  put remaining {children = mempty, attributes = mempty}
+  pure . Leftovers $ unAnnotateElement remaining

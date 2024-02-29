@@ -22,7 +22,7 @@ Representing XML
 Parsing and Unparsing XML
 
     newtype wrappers
-    ContentElement, OrEmpty
+    ContentElement, MaybeEmpty
 
     Unparsing
 

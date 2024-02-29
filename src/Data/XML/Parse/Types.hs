@@ -7,7 +7,7 @@ module Data.XML.Parse.Types
     FromDocument (..),
     fromRootElement,
     FromElement (..),
-    FromChoiceElement (..),
+    --    FromChoiceElement (..),
     FromContent (..),
     readContent,
     parseContentElement,
@@ -17,14 +17,12 @@ module Data.XML.Parse.Types
 where
 
 import Control.Exception (Exception)
-import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.XML.Parse.Location
 import Data.XML.Types
 import GHC.Stack
 import Text.Read (readMaybe)
-import Text.XML (Name)
 import Type.Reflection (Typeable, typeRep)
 
 data ParserError i = ParserError
@@ -35,15 +33,15 @@ data ParserError i = ParserError
   deriving stock (Show)
   deriving anyclass (Exception)
 
-parserError :: HasCallStack => i -> String -> ParserError i
+parserError :: (HasCallStack) => i -> String -> ParserError i
 parserError info message = ParserError {callstack = callStack, ..}
 
 prettyParserError :: ParserError Location -> String
 prettyParserError ParserError {..} =
   unlines
-    ( message :
-      "To get to the error location:" :
-      map ("  " <>) (printPath info)
+    ( message
+        : "To get to the error location:"
+        : map ("  " <>) (printPath info)
     )
 
 prettyParserErrorWithCallStack :: ParserError Location -> String
@@ -53,12 +51,12 @@ prettyParserErrorWithCallStack err@ParserError {callstack} =
 type Parser i a = Either (ParserError i) a
 
 class FromDocument a where
-  fromDocument :: HasCallStack => AnnotatedDocument i -> Parser i a
+  fromDocument :: (HasCallStack) => AnnotatedDocument i -> Parser i a
 
-fromRootElement :: (HasCallStack, FromElement b) => Name -> (b -> a) -> AnnotatedDocument i -> Parser i a
-fromRootElement name f Document {..} =
+fromRootElement :: (HasCallStack, FromElement a) => Name -> AnnotatedDocument i -> Parser i a
+fromRootElement name Document {..} =
   if rootName == name
-    then f <$> fromElement root
+    then fromElement root
     else
       Left . parserError info $
         "Failed to parse document: expected root element with name "
@@ -67,7 +65,7 @@ fromRootElement name f Document {..} =
           <> renderName rootName
 
 class FromElement a where
-  fromElement :: HasCallStack => AnnotatedElement i -> Parser i a
+  fromElement :: (HasCallStack) => AnnotatedElement i -> Parser i a
 
 -- | Textual 'content' appears either inside elements, e.g.
 --
@@ -77,7 +75,7 @@ class FromElement a where
 --
 -- <element attr_name="<attr_content>"/>
 class FromContent a where
-  fromContent :: HasCallStack => Text -> i -> Parser i a
+  fromContent :: (HasCallStack) => Text -> i -> Parser i a
 
 readContent :: forall a i. (HasCallStack, Read a, Typeable a) => Text -> i -> Parser i a
 readContent text i = case readMaybe $ Text.unpack text of
@@ -89,11 +87,11 @@ readContent text i = case readMaybe $ Text.unpack text of
         <> "\" as "
         <> show (typeRep @a)
 
-instance FromElement a => FromElement (OrEmpty a) where
+instance (FromElement a) => FromElement (MaybeEmpty a) where
   fromElement el =
     if isEmptyElement el
-      then pure $ OrEmpty Nothing
-      else OrEmpty . Just <$> fromElement el
+      then pure $ MaybeEmpty Nothing
+      else MaybeEmpty . Just <$> fromElement el
 
 -- | A 'choice' element corresponds to the 'choice' schema element, which encodes sum types:
 --
@@ -110,9 +108,14 @@ instance FromElement a => FromElement (OrEmpty a) where
 -- might both be instances of the sum type represented in Haskell as
 --
 -- data Example = A Something | B SomethingElse
-class FromChoiceElement a where
-  fromChoiceElement :: HasCallStack => Map Name (AnnotatedElement i -> Parser i a)
 
+{-
+class FromChoiceElement a where
+  -- separate FromOrderedChoiceElement, FromUnorderedChoiceElement
+  -- HasCallStack => OrderedM a
+  -- better: only in OrderedM (not as useful perhaps in UnorderedM)
+  fromChoiceElement :: HasCallStack => Map Name (AnnotatedElement i -> Parser i a)
+-}
 {- Instances -}
 instance FromContent Text where
   fromContent t _ = pure t
@@ -126,7 +129,7 @@ instance FromElement Element where
 instance FromDocument Document where
   fromDocument = pure . unAnnotateDocument
 
-instance FromContent a => FromElement (ContentElement a) where
+instance (FromContent a) => FromElement (ContentElement a) where
   fromElement el = ContentElement <$> parseContentElement fromContent el
 
 deriving via ContentElement Text instance FromElement Text
@@ -137,7 +140,7 @@ deriving via ContentElement Int instance FromElement Int
 -- (which is treated as an empty content string). Fails if the element isn't
 --  fully consumed, e.g. if the element has attributes.
 parseContentElement ::
-  HasCallStack => (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
+  (HasCallStack) => (Text -> i -> Parser i a) -> AnnotatedElement i -> Parser i a
 parseContentElement p el@Element {info} = do
   (leftovers, a) <- parseContentElementKeepLeftovers p el
   if isEmptyElement leftovers
@@ -146,7 +149,7 @@ parseContentElement p el@Element {info} = do
 
 -- | Returns the leftovers (i.e. any attributes).
 parseContentElementKeepLeftovers ::
-  HasCallStack =>
+  (HasCallStack) =>
   (Text -> i -> Parser i a) ->
   AnnotatedElement i ->
   Parser i (AnnotatedElement i, a)
@@ -160,7 +163,7 @@ parseContentElementKeepLeftovers p el@Element {children, info} = do
 
 -- | Ignores attributes.
 parseContentElementPartially ::
-  HasCallStack =>
+  (HasCallStack) =>
   (Text -> i -> Parser i a) ->
   AnnotatedElement i ->
   Parser i a

@@ -6,6 +6,7 @@ module Data.XML.Types
     Node,
 
     -- * Annotated types (for better parser errors)
+    Name (..),
     AnnotatedDocument (..),
     isEmptyElement,
     AnnotatedElement (..),
@@ -29,7 +30,8 @@ module Data.XML.Types
 
     -- * newtype wrappers
     ContentElement (..),
-    OrEmpty (..),
+    MaybeEmpty (..),
+    Leftovers (..),
   )
 where
 
@@ -63,6 +65,18 @@ data AnnotatedElement i = Element
   }
   deriving stock (Show, Eq, Ord, Generic)
 
+instance Semigroup i => Semigroup (AnnotatedElement i) where
+  Element {attributes = a1, children = c1, info = i1}
+    <> Element {attributes = a2, children = c2, info = i2} =
+      Element
+        { attributes = a1 <> a2,
+          children = c1 <> c2,
+          info = i1 <> i2
+        }
+
+instance Monoid i => Monoid (AnnotatedElement i) where
+  mempty = Element {attributes = mempty, children = [], info = mempty}
+
 type Document = AnnotatedDocument ()
 
 type Element = AnnotatedElement ()
@@ -80,18 +94,12 @@ newtype ContentElement a = ContentElement {content :: a}
   deriving stock (Show, Eq, Ord, Generic)
 
 -- | Encodes `Nothing` as emptyElement. Parses the empty element as `Nothing`.
-newtype OrEmpty a = OrEmpty {unOrEmpty :: Maybe a}
+newtype MaybeEmpty a = MaybeEmpty {unMaybeEmpty :: Maybe a}
+  deriving stock (Show, Eq, Ord, Generic)
 
-instance Semigroup Element where
-  el <> el' =
-    Element
-      { attributes = attributes el <> attributes el',
-        children = children el <> children el',
-        info = ()
-      }
-
-instance Monoid Element where
-  mempty = emptyElement
+-- | Contains the (unparsed) remainder of the element.
+newtype Leftovers = Leftovers Element
+  deriving stock (Show, Eq, Ord, Generic)
 
 emptyElement :: Element
 emptyElement = Element mempty [] ()
