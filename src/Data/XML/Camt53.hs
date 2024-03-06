@@ -29,7 +29,7 @@ import Data.Time
 import Data.Tuple (swap)
 import Data.XML (ContentElement (..), Leftovers, ReadShowXmlElement (..), decodeDocument)
 import Data.XML.BoundedList
-import Data.XML.Parse.Generically.Labelled
+import Data.XML.Parse.Generic
 import Data.XML.Parse.Ordered (AnyElement)
 import Data.XML.Parse.Types
 import qualified Data.XML.Types as XML

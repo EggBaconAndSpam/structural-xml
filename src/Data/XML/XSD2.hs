@@ -1,19 +1,16 @@
-{-# LANGUAGE OverloadedLabels #-}
-
--- Enough to parse camt.053.001.11.xsd
+-- Just enough to parse camt.053.001.11.xsd
 module Data.XML.XSD2 where
 
 import Data.Char (toLower)
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.XML hiding (Element)
-import Data.XML.Parse.Generically.Labelled
+import Data.XML.Parse.Generic
 import GHC.Generics (Generic)
 
 data XsdNamespace
 
 instance MapNamesToXML XsdNamespace where
-  mapNamesToAttributes = fromString
   mapNamesToElements l =
     (fromString l)
       { nameNamespace = Just "http://www.w3.org/2001/XMLSchema"

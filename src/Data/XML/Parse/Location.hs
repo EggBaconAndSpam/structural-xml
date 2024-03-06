@@ -10,7 +10,6 @@ where
 
 import qualified Data.Map.Strict as Map
 import Data.XML.Types
-import Text.XML (Name)
 
 data Step = EnterElement Name | SkipContent | SkipElement Name
 
@@ -39,12 +38,12 @@ annotateElementAt here el = do
     nodesWithPaths _ [] = []
     nodesWithPaths (Location path) (node : rest) = case node of
       NodeContent text _ ->
-        NodeContent text (Location path) :
-        nodesWithPaths (Location $ SkipContent : path) rest
+        NodeContent text (Location path)
+          : nodesWithPaths (Location $ SkipContent : path) rest
       NodeElement name child _ ->
         let childWithPaths = annotateElementAt (Location $ EnterElement name : path) child
-         in NodeElement name childWithPaths (Location path) :
-            nodesWithPaths (Location $ SkipElement name : path) rest
+         in NodeElement name childWithPaths (Location path)
+              : nodesWithPaths (Location $ SkipElement name : path) rest
 
 printPath :: Location -> [String]
 printPath loc = map printStep . reverse $ reversedPath loc
