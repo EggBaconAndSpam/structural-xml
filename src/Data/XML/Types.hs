@@ -65,7 +65,7 @@ data AnnotatedElement i = Element
   }
   deriving stock (Show, Eq, Ord, Generic)
 
-instance Semigroup i => Semigroup (AnnotatedElement i) where
+instance (Semigroup i) => Semigroup (AnnotatedElement i) where
   Element {attributes = a1, children = c1, info = i1}
     <> Element {attributes = a2, children = c2, info = i2} =
       Element
@@ -74,7 +74,7 @@ instance Semigroup i => Semigroup (AnnotatedElement i) where
           info = i1 <> i2
         }
 
-instance Monoid i => Monoid (AnnotatedElement i) where
+instance (Monoid i) => Monoid (AnnotatedElement i) where
   mempty = Element {attributes = mempty, children = [], info = mempty}
 
 type Document = AnnotatedDocument ()

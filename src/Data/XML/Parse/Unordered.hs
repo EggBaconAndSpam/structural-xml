@@ -26,7 +26,6 @@ where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.List (intercalate)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML
