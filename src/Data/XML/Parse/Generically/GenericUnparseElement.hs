@@ -13,6 +13,7 @@ import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as Map
 import Data.XML
+import Data.XML.BoundedList
 import Data.XML.Parse.Generically.Names
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
@@ -74,7 +75,6 @@ instance
       <> genericUnparseElement''' @a @fields @codes xs
 
 instance
-  {-# OVERLAPPING #-}
   (MapNamesToXML a, ToContent code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'AttributeClass (Maybe code)
   where
@@ -85,6 +85,7 @@ instance
       }
 
 instance
+  {-# OVERLAPPABLE #-}
   (MapNamesToXML a, ToContent code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'AttributeClass code
   where
@@ -94,6 +95,7 @@ instance
       }
 
 instance
+  {-# OVERLAPPABLE #-}
   (MapNamesToXML a, ToElement code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'ElementClass code
   where
@@ -112,7 +114,6 @@ instance
       }
 
 instance
-  {-# OVERLAPPING #-}
   (MapNamesToXML a, ToElement code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'ElementClass (Maybe code)
   where
@@ -124,7 +125,6 @@ instance
       }
 
 instance
-  {-# OVERLAPPING #-}
   (MapNamesToXML a, ToElement code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'ElementClass (NonEmpty code)
   where
@@ -137,7 +137,6 @@ instance
       }
 
 instance
-  {-# OVERLAPPING #-}
   (MapNamesToXML a, ToElement code, KnownSymbol field) =>
   GenericUnparseField a ('FieldInfo field) 'ElementClass [code]
   where
@@ -148,3 +147,9 @@ instance
             (\code -> NodeElement (mapNameToElement @a @field) (toElement code) ())
             xs
       }
+
+instance
+  (GenericUnparseField a ('FieldInfo field) 'ElementClass code) =>
+  GenericUnparseField a ('FieldInfo field) 'ElementClass (Restricted rs code)
+  where
+  genericUnparseField (Restricted a) = genericUnparseField @a @('FieldInfo field) @'ElementClass a

@@ -1,4 +1,4 @@
--- todo: try out overlappable instead of overlapping
+-- TODO: better errors for unions
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -78,8 +78,8 @@ instance
   GenericParseOrdered' a ('Record _c fields ': constructors) (code ': codes)
   where
   genericParseOrdered'' el =
-    (Z <$> parseOrderedElement (genericParseOrdered''' @a @fields @code) el)
-      <> (S <$> genericParseOrdered'' @a @constructors @codes el)
+    (S <$> genericParseOrdered'' @a @constructors @codes el)
+      <> (Z <$> parseOrderedElement (genericParseOrdered''' @a @fields @code) el)
 
 instance
   ( GenericParseOrderedField a field (ClassifyFieldLabel field) code,
@@ -93,7 +93,6 @@ instance
     pure (I x :* rest)
 
 instance
-  {-# OVERLAPPING #-}
   ( MapNamesToXML a,
     FromElement code,
     KnownSymbol field
@@ -104,6 +103,7 @@ instance
     consumeElementOrAbsent (mapNameToElement @a @field)
 
 instance
+  {-# OVERLAPPABLE #-}
   ( MapNamesToXML a,
     FromElement code,
     KnownSymbol field
@@ -114,7 +114,6 @@ instance
     consumeElement (mapNameToElement @a @field)
 
 instance
-  {-# OVERLAPPING #-}
   ( MapNamesToXML a,
     FromElement code,
     KnownSymbol field
@@ -125,7 +124,6 @@ instance
     consumeElements (mapNameToElement @a @field)
 
 instance
-  {-# OVERLAPPING #-}
   ( MkRestricted rs code,
     GenericParseOrderedField a ('FieldInfo field) 'ElementClass code
   ) =>
@@ -140,7 +138,6 @@ instance
         throwError $ parserError info err
 
 instance
-  {-# OVERLAPPING #-}
   ( MapNamesToXML a,
     FromElement code,
     KnownSymbol field
@@ -152,10 +149,11 @@ instance
     xs <- consumeElements $ mapNameToElement @a @field
     pure $ x :| xs
 
-instance {-# OVERLAPPING #-} GenericParseOrderedField (a :: Type) ('FieldInfo _info) 'ElementClass Leftovers where
+instance GenericParseOrderedField (a :: Type) ('FieldInfo _info) 'ElementClass Leftovers where
   genericParseOrderedField = consumeLeftovers
 
 instance
+  {-# OVERLAPPABLE #-}
   ( MapNamesToXML a,
     FromContent code,
     KnownSymbol field
@@ -166,7 +164,6 @@ instance
     consumeAttribute (mapNameToAttribute @a @field)
 
 instance
-  {-# OVERLAPPING #-}
   ( MapNamesToXML a,
     FromContent code,
     KnownSymbol field

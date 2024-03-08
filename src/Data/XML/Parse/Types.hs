@@ -22,6 +22,7 @@ import Data.Decimal
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
+import Data.Time.Format.ISO8601
 import Data.XML.Parse.Location
 import Data.XML.Types
 import GHC.Stack
@@ -51,6 +52,7 @@ prettyParserErrorWithCallStack :: ParserError Location -> String
 prettyParserErrorWithCallStack err@ParserError {callstack} =
   prettyParserError err <> prettyCallStack callstack
 
+-- todo: NonEmpty (ParserError i)?
 type Parser i a = Either (ParserError i) a
 
 class FromDocument a where
@@ -127,7 +129,9 @@ instance FromContent Int where
   fromContent = readContent
 
 instance FromContent UTCTime where
-  fromContent = readContent
+  fromContent t i = case iso8601ParseM $ Text.unpack t of
+    Nothing -> Left . parserError i $ "Not a valid timestamp in ISO8601 format: " <> Text.unpack t
+    Just u -> pure $ zonedTimeToUTC u
 
 deriving via ContentElement UTCTime instance FromElement UTCTime
 

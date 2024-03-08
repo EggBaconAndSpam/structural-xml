@@ -21,9 +21,12 @@ module Data.XML.Unparse
 where
 
 import Control.Monad.State.Strict
+import Data.Decimal
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Data.Time
+import Data.Time.Format.ISO8601
 import Data.XML.Types
 import Text.XML (Name)
 
@@ -32,7 +35,7 @@ import Text.XML (Name)
 class ToDocument a where
   toDocument :: a -> Document
 
-toRootElement :: ToElement a => Name -> a -> Document
+toRootElement :: (ToElement a) => Name -> a -> Document
 toRootElement name a = Document {rootName = name, root = toElement a, info = ()}
 
 class ToElement a where
@@ -83,19 +86,19 @@ appendContent :: Text -> ConstructM ()
 appendContent text = ConstructM . modify $ \Element {..} ->
   Element {children = NodeContent text () : children, ..}
 
-appendElement :: ToElement a => Name -> a -> ConstructM ()
+appendElement :: (ToElement a) => Name -> a -> ConstructM ()
 appendElement name a = ConstructM . modify $ \Element {..} ->
   Element {children = NodeElement name (toElement a) () : children, ..}
 
-appendElementOrEmpty :: ToElement a => Name -> Maybe a -> ConstructM ()
+appendElementOrEmpty :: (ToElement a) => Name -> Maybe a -> ConstructM ()
 appendElementOrEmpty name ma = ConstructM . modify $ \Element {..} ->
   Element {children = NodeElement name (maybe emptyElement toElement ma) () : children, ..}
 
-addAttribute :: ToContent a => Name -> a -> ConstructM ()
+addAttribute :: (ToContent a) => Name -> a -> ConstructM ()
 addAttribute name a = ConstructM . modify $ \Element {..} ->
   Element {attributes = Map.insert name (toContent a, ()) attributes, ..}
 
-appendChoiceElement :: ToChoiceElement a => a -> ConstructM ()
+appendChoiceElement :: (ToChoiceElement a) => a -> ConstructM ()
 appendChoiceElement a = ConstructM . modify $ \Element {..} ->
   Element {children = NodeElement name el () : children, ..}
   where
@@ -109,13 +112,22 @@ instance ToDocument (AnnotatedDocument i) where
 instance ToElement (AnnotatedElement i) where
   toElement = unAnnotateElement
 
+instance ToElement Leftovers where
+  toElement (Leftovers el) = el
+
 instance ToContent Text where
   toContent = id
+
+instance ToContent UTCTime where
+  toContent = Text.pack . iso8601Show
+
+instance ToContent Day where
+  toContent = Text.pack . show
 
 instance ToContent Int where
   toContent = Text.pack . show
 
-instance ToContent a => ToElement (ContentElement a) where
+instance (ToContent a) => ToElement (ContentElement a) where
   toElement (ContentElement a) =
     Element
       { attributes = Map.empty,
@@ -126,3 +138,18 @@ instance ToContent a => ToElement (ContentElement a) where
 deriving via ContentElement Text instance ToElement Text
 
 deriving via ContentElement Int instance ToElement Int
+
+deriving via ContentElement Day instance ToElement Day
+
+deriving via ContentElement UTCTime instance ToElement UTCTime
+
+instance ToContent Bool where
+  toContent True = "true"
+  toContent False = "false"
+
+deriving via ContentElement Bool instance ToElement Bool
+
+instance ToContent Decimal where
+  toContent = Text.pack . show
+
+deriving via ContentElement Decimal instance ToElement Decimal

@@ -1,4 +1,3 @@
--- todo: try out overlappable instead of overlapping
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}

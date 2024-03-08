@@ -32,12 +32,25 @@ instance
   where
   fromElement el = GenericContent <$> genericParseContent el
 
+instance
+  (GHC.Generic a, GFrom a, GenericUnparseContent a (GDatatypeInfoOf a) (GCode a)) =>
+  ToElement (GenericContent a)
+  where
+  toElement (GenericContent a) = genericUnparseContent a
+
 genericParseContent ::
   forall a i.
   (GHC.Generic a, GTo a, GenericParseContent a (GDatatypeInfoOf a) (GCode a)) =>
   AnnotatedElement i ->
   Parser i a
 genericParseContent el = gto <$> genericParseContent' @a @(GDatatypeInfoOf a) @(GCode a) el
+
+genericUnparseContent ::
+  forall a.
+  (GHC.Generic a, GFrom a, GenericUnparseContent a (GDatatypeInfoOf a) (GCode a)) =>
+  a ->
+  Element
+genericUnparseContent x = genericUnparseContent' @a @(GDatatypeInfoOf a) @(GCode a) $ gfrom x
 
 class GenericParseContent (a :: Type) (info :: DatatypeInfo) (code :: [[Type]]) where
   genericParseContent' :: AnnotatedElement i -> Parser i (SOP I code)
@@ -97,6 +110,7 @@ class GenericParseContentField (a :: Type) (field :: FieldInfo) (l :: LabelClass
   genericParseContentField :: OrderedM i code -- ContentM?
 
 instance
+  {-# OVERLAPPABLE #-}
   ( MapNamesToXML a,
     FromContent code,
     KnownSymbol field
@@ -107,7 +121,6 @@ instance
     consumeAttribute (mapNameToAttribute @a @field)
 
 instance
-  {-# OVERLAPPING #-}
   ( MapNamesToXML a,
     FromContent code,
     KnownSymbol field

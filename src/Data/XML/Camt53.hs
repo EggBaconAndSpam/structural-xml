@@ -12,31 +12,29 @@
 module Data.XML.Camt53 where
 
 import Control.Applicative
+import Control.Monad
 import Data.Char (isUpper, toLower, toUpper)
 import Data.Decimal
-import Data.Foldable
-import Data.List (inits)
+import Data.List (inits, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Set (Set)
 import Data.String (IsString (..))
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Data.Time
 import Data.Tuple (swap)
-import Data.XML (ContentElement (..), Leftovers, ReadShowXmlElement (..), decodeDocument)
+import Data.XML (Leftovers, ReadShowXmlElement (..), decodeDocument)
 import Data.XML.BoundedList
 import Data.XML.Parse.Generic
-import Data.XML.Parse.Ordered (AnyElement)
 import Data.XML.Parse.Types
 import qualified Data.XML.Types as XML
+import Data.XML.Unparse hiding (Name)
 import Data.XML.XSD2
 import qualified Data.XML.XSD2 as Xsd
 import GHC.Generics (Generic)
-import Generics.SOP.GGP (GTo)
 import Language.Haskell.TH
 import Optics
 
@@ -360,13 +358,28 @@ manglingDictionary =
       ("exchange", "Xchg"),
       ("expiry", "Xpry"),
       ("yielded", "Yldd"),
-      ("year", "Yr")
+      ("year", "Yr"),
+      -- CAMT053.02
+      ("BEI", "BEI"),
+      ("zone", "Zn")
     ]
+
+{-
+todo: drop xsi attributes?
+xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02
+  camt.053.001.02.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance
+
+For each attribute information item in the element information item's
+[attributes] excepting those whose [namespace name] is identical to
+http://www.w3.org/2001/XMLSchema-instance and whose [local name] is one of type,
+nil, schemaLocation or noNamespaceSchemaLocation, the appropriate case among the
+following must be true:
+  -}
 
 instance MapNamesToXML (Camt53Element a) where
   mapNamesToElements l =
     (fromString $ mangleName l)
-      { XML.nameNamespace = Just "urn:iso:std:iso:20022:tech:xsd:camt.053.001.11"
+      { XML.nameNamespace = Just "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"
       }
 
   mapNamesToAttributes = fromString . mangleName
@@ -380,11 +393,16 @@ instance MapNamesToXML (Camt53Element a) where
 mangleName :: String -> String
 mangleName "" = ""
 mangleName t =
-  case mapMaybe (\i -> (length i,) <$> Map.lookup i unmanglingDictionary)
-    . reverse
-    $ inits t of
+  case mapMaybe (\i -> (length i,) <$> Map.lookup i manglingDictionary)
+    . sortOn ((0 -) . length)
+    $ inits t <> inits (uncapitalise t) of
     (l, longestUnmangledMatch) : _ -> longestUnmangledMatch <> mangleName (drop l t)
     _ -> t
+  where
+    uncapitalise :: String -> String
+    uncapitalise = \case
+      "" -> ""
+      i : rest -> toLower i : rest
 
 unmangleName :: String -> String
 unmangleName s = go s
@@ -409,23 +427,34 @@ unmangledElementName t =
 
 qCamt53Schema :: Q [Dec]
 qCamt53Schema = do
-  camt53xsd <- runIO $ Text.readFile "/home/frederikramcke/Downloads/camt.053.001.11.xsd"
+  camt53xsd <- runIO $ Text.readFile "/home/frederikramcke/Documents/structural-xml/camt.053.001.02.xsd"
   case decodeDocument camt53xsd of
     Left err -> error err
     Right SchemaDoc {schema} -> reifySchema schema
 
 reifySchema :: Schema -> Q [Dec]
-reifySchema s =
+reifySchema s = do
   let [documentRoot] = s ^. #element
-   in pure $
-        schema_document documentRoot
-          : map reifySimpleType (s ^. #simpleType)
-            <> map reifyComplexType (s ^. #complexType)
+  let mangledNames = schemaElementNames s
+  unless (all (\n -> let n' = Text.unpack n in mangleName (unmangleName n') == n') mangledNames) $
+    error "mangling is wrong!"
+  pure $
+    schema_document documentRoot
+      : map reifySimpleType (s ^. #simpleType)
+        <> map reifyComplexType (s ^. #complexType)
 
 schema_document :: Element -> Dec
 schema_document e =
   let typeName = mkName "DocumentRoot"
-   in DataD [] typeName [] Nothing [RecC typeName [(mkName' $ "elem_" <> e ^. #attr_name, noBang, elementType e)]] []
+   in DataD
+        []
+        typeName
+        []
+        Nothing
+        [RecC typeName [(mkName' $ "elem_" <> e ^. #attr_name, noBang, elementType e)]]
+        [ DerivClause (Just StockStrategy) [ConT ''Generic],
+          DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Document) (ConT typeName))) [ConT ''FromDocument, ConT ''ToDocument]
+        ]
 
 reifySimpleType :: SimpleType -> Dec
 reifySimpleType st =
@@ -445,6 +474,7 @@ reifyComplexType st =
   fromMaybe (error "unhandled SimpleType") $
     complexType_sequence_elements st
       <|> complexType_sequence_any st
+      <|> complexType_sequence_choice st
       <|> complexType_choice st
       <|> complexType_content_extension st
 
@@ -476,7 +506,7 @@ simpleType_string_pattern st
               []
               Nothing
               (RecC nam [(accessorName, noBang, innerType)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 -- todo: type alias instead of newtype?
@@ -494,7 +524,7 @@ simpleType_date st
               []
               Nothing
               (RecC nam [(accessorName, noBang, ConT ''Day)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 -- just parse as text because what the hell even is this?
@@ -512,7 +542,7 @@ simpleType_year st
               []
               Nothing
               (RecC nam [(accessorName, noBang, ConT ''Text)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 -- ditto
@@ -530,7 +560,7 @@ simpleType_month st
               []
               Nothing
               (RecC nam [(accessorName, noBang, ConT ''Text)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 simpleType_time :: SimpleType -> Maybe Dec
@@ -547,7 +577,7 @@ simpleType_time st
               []
               Nothing
               (RecC nam [(accessorName, noBang, ConT ''UTCTime)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 simpleType_string_length :: SimpleType -> Maybe Dec
@@ -585,7 +615,7 @@ simpleType_string_length st
               []
               Nothing
               (RecC nam [(accessorName, noBang, innerType)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 -- derive MapNamesToXML via Camt53Names
@@ -609,7 +639,7 @@ simpleType_string_enumeration st
               Nothing
               conNames
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Enum) (ConT typeName))) [ConT ''FromContent, ConT ''FromElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Enum) (ConT typeName))) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -627,7 +657,7 @@ simpleType_boolean st
               []
               Nothing
               (RecC typeName [(accessorName, noBang, ConT ''Bool)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 -- todo: digit restrictions
@@ -662,7 +692,7 @@ simpleType_decimal st
               []
               Nothing
               (RecC typeName [(accessorName, noBang, innerType)])
-              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement]]
+              [DerivClause (Just NewtypeStrategy) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]]
   | otherwise = Nothing
 
 elementType :: Element -> Type
@@ -700,8 +730,7 @@ elementType Element {..} =
 
 complexType_sequence_elements :: ComplexType -> Maybe Dec
 complexType_sequence_elements ct
-  | ComplexTypeSequence {sequence = s} <- ct,
-    isNothing $ s ^. #any =
+  | ComplexTypeSequence {sequence = SequenceElements {element = es}} <- ct =
       let mkField el = (unmangledElementName $ el ^. #attr_name, noBang, elementType el)
           typeName = mkName' $ ct ^. #attr_name
        in Just $
@@ -710,18 +739,15 @@ complexType_sequence_elements ct
               typeName
               []
               Nothing
-              [RecC typeName (map mkField $ s ^. #element)]
+              [RecC typeName (map mkField es)]
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
--- todo
 complexType_sequence_any :: ComplexType -> Maybe Dec
 complexType_sequence_any ct
-  | ComplexTypeSequence {sequence = s} <- ct,
-    null $ s ^. #element,
-    isJust $ s ^. #any =
+  | ComplexTypeSequence {sequence = SequenceAny {}} <- ct =
       let typeName = mkName' $ ct ^. #attr_name
        in Just $
             DataD
@@ -731,7 +757,29 @@ complexType_sequence_any ct
               Nothing
               [RecC typeName [(mkName "any", noBang, ConT ''Leftovers)]]
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+              ]
+  | otherwise = Nothing
+
+-- camt053.02
+complexType_sequence_choice :: ComplexType -> Maybe Dec
+complexType_sequence_choice ct
+  | ComplexTypeSequence {sequence = SequenceChoice {choice = Choice {element = e}}} <- ct =
+      let mkConstructor :: Element -> Con
+          mkConstructor element' =
+            RecC
+              (mkName' $ ct ^. #attr_name <> element' ^. #attr_name)
+              [(unmangledElementName $ element' ^. #attr_name, noBang, elementType element')]
+          typeName = mkName' $ ct ^. #attr_name
+       in Just $
+            DataD
+              []
+              typeName
+              []
+              Nothing
+              (map mkConstructor e)
+              [ DerivClause (Just StockStrategy) [ConT ''Generic],
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -752,7 +800,7 @@ complexType_choice ct
               Nothing
               (map mkConstructor e)
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -779,12 +827,33 @@ complexType_content_extension ct
               Nothing
               [RecC typeName [attributeField, contentField]]
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Content) (ConT typeName))) [ConT ''FromElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Content) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
+newtype Camt53Document a = Camt53Document a
+  deriving newtype (Generic)
+
+instance MapNamesToXML (Camt53Document a) where
+  mapNamesToElements l =
+    (fromString l)
+      { XML.nameNamespace = Just "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"
+      }
+
 newtype Camt53Element a = Camt53Element a
   deriving newtype (Generic)
+
+instance
+  (FromDocument (GenericDocument (Camt53Document a))) =>
+  FromDocument (Camt53Document a)
+  where
+  fromDocument el = (\(GenericDocument a) -> a) <$> fromDocument el
+
+instance
+  (ToDocument (GenericDocument (Camt53Document a))) =>
+  ToDocument (Camt53Document a)
+  where
+  toDocument = toDocument . GenericDocument
 
 instance
   (FromElement (GenericOrdered (Camt53Element a))) =>
@@ -792,15 +861,39 @@ instance
   where
   fromElement el = (\(GenericOrdered a) -> a) <$> fromElement el
 
+instance
+  (ToElement (GenericOrdered (Camt53Element a))) =>
+  ToElement (Camt53Element a)
+  where
+  toElement = toElement . GenericOrdered
+
 newtype Camt53Enum a = Camt53Enum a
   deriving (MapNamesToXML) via Camt53Element a
-  deriving newtype (Generic, FromElement)
+  deriving newtype (Generic)
+
+deriving via
+  XML.ContentElement (Camt53Enum a)
+  instance
+    (FromContent (Camt53Enum a)) =>
+    FromElement (Camt53Enum a)
+
+deriving via
+  XML.ContentElement (Camt53Enum a)
+  instance
+    (ToContent (Camt53Enum a)) =>
+    ToElement (Camt53Enum a)
 
 instance
   (FromContent (GenericEnum (Camt53Enum a))) =>
   FromContent (Camt53Enum a)
   where
   fromContent t i = (\(GenericEnum a) -> a) <$> fromContent t i
+
+instance
+  (ToContent (GenericEnum (Camt53Enum a))) =>
+  ToContent (Camt53Enum a)
+  where
+  toContent = toContent . GenericEnum
 
 newtype Camt53Content a = Camt53Content a
   deriving (MapNamesToXML) via Camt53Element a
@@ -812,8 +905,8 @@ instance
   where
   fromElement el = (\(GenericContent a) -> a) <$> fromElement el
 
-{-
-todo:
-- toElement, test round-trip
-- Decimal type
--}
+instance
+  (ToElement (GenericContent (Camt53Content a))) =>
+  ToElement (Camt53Content a)
+  where
+  toElement = toElement . GenericContent

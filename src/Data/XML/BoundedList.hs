@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import Data.XML
 import GHC.TypeLits
 import qualified Text.Regex.TDFA as Regex
-import qualified Text.Regex.TDFA.String as Regex
+import qualified Text.Regex.TDFA.Text as Regex
 
 data Restriction
   = FractionDigits Nat
@@ -51,16 +51,15 @@ instance (KnownNat n) => Restrict ('MinInclusive n) Decimal where
       Left $ "Number is too small, expected at least " <> show (natVal $ Proxy @n) <> "."
     pure d
 
--- Length is checked after stripping white space, but the white space is kept!
 instance (KnownNat n) => Restrict ('MaxLength n) Text where
   restrict t = do
-    unless (fromIntegral (T.length $ T.strip t) <= natVal (Proxy @n)) $ do
+    unless (fromIntegral (T.length t) <= natVal (Proxy @n)) $ do
       Left $ "Text too long, expected at most " <> show (natVal $ Proxy @n) <> " characters."
     pure t
 
 instance (KnownNat n) => Restrict ('MinLength n) Text where
   restrict t = do
-    unless (fromIntegral (T.length $ T.strip t) >= natVal (Proxy @n)) $ do
+    unless (fromIntegral (T.length t) >= natVal (Proxy @n)) $ do
       Left $ "Text too short, expected at least " <> show (natVal $ Proxy @n) <> " characters."
     pure t
 
@@ -115,17 +114,17 @@ instance
 instance (KnownSymbol s) => Restrict ('Pattern s) Text where
   restrict =
     case mkRegex of
-      Left err -> const $ Left err
+      Left err -> const . Left $ "Invalid regex pattern \'" <> symbolVal (Proxy @s) <> "\": " <> err
       Right regex -> \t ->
         if Regex.matchTest regex t
-          then Left $ "Text does not match regex pattern " <> symbolVal (Proxy @s)
-          else pure t
+          then pure t
+          else Left $ "Text does not match regex pattern " <> symbolVal (Proxy @s) <> " : " <> T.unpack t
     where
       mkRegex =
         Regex.compile
           Regex.defaultCompOpt
           (Regex.defaultExecOpt {Regex.captureGroups = False})
-          (symbolVal $ Proxy @s)
+          (T.pack $ symbolVal $ Proxy @s)
 
 instance (FromContent a, MkRestricted rs a) => FromContent (Restricted rs a) where
   fromContent t i = do

@@ -1,4 +1,3 @@
--- todo: try out overlappable instead of overlapping
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -77,8 +76,8 @@ instance
   GenericParseUnordered' a ('Record _c fields ': constructors) (code ': codes)
   where
   genericParseUnordered'' el =
-    (Z <$> parseUnorderedElement (genericParseUnordered''' @a @fields @code) el)
-      <> (S <$> genericParseUnordered'' @a @constructors @codes el)
+    (S <$> genericParseUnordered'' @a @constructors @codes el)
+      <> (Z <$> parseUnorderedElement (genericParseUnordered''' @a @fields @code) el)
 
 instance
   ( GenericParseUnorderedField a field (ClassifyFieldLabel field) code,
@@ -103,6 +102,7 @@ instance
     consumeElementOrAbsent (mapNameToElement @a @field)
 
 instance
+  {-# OVERLAPPABLE #-}
   ( MapNamesToXML a,
     FromElement code,
     KnownSymbol field
@@ -151,10 +151,11 @@ instance
     xs <- consumeElements $ mapNameToElement @a @field
     pure $ x :| xs
 
-instance {-# OVERLAPPING #-} GenericParseUnorderedField (a :: Type) _info _label Leftovers where
+instance GenericParseUnorderedField (a :: Type) _info _label Leftovers where
   genericParseUnorderedField = consumeLeftovers
 
 instance
+  {-# OVERLAPPABLE #-}
   ( MapNamesToXML a,
     FromContent code,
     KnownSymbol field
