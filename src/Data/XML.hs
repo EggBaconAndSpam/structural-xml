@@ -91,51 +91,51 @@ decodeDocument :: (HasCallStack, FromDocument a) => Text -> Either String a
 decodeDocument raw = case parseText def (Text.Lazy.fromStrict raw) of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . annotateDocument $
+    first prettyLastParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentLT :: (HasCallStack, FromDocument a) => LT.Text -> Either String a
 decodeDocumentLT raw = case parseText def raw of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . annotateDocument $
+    first prettyLastParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentBS :: (HasCallStack, FromDocument a) => ByteString -> Either String a
 decodeDocumentBS raw = case parseLBS def (ByteString.Lazy.fromStrict raw) of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . annotateDocument $
+    first prettyLastParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
 decodeDocumentLBS :: (HasCallStack, FromDocument a) => BL.ByteString -> Either String a
 decodeDocumentLBS raw = case parseLBS def raw of
   Left err -> Left $ show err
   Right conduitDoc ->
-    first prettyParserError . fromDocument . annotateDocument $
+    first prettyLastParserError . fromDocument . annotateDocument $
       fromXmlConduit conduitDoc
 
-encodeDocument :: ToDocument a => a -> Text
+encodeDocument :: (ToDocument a) => a -> Text
 encodeDocument =
   Text.Lazy.toStrict
     . renderText def
     . toXmlConduit
     . toDocument
 
-encodeDocumentLT :: ToDocument a => a -> LT.Text
+encodeDocumentLT :: (ToDocument a) => a -> LT.Text
 encodeDocumentLT =
   renderText def
     . toXmlConduit
     . toDocument
 
-encodeDocumentBS :: ToDocument a => a -> ByteString
+encodeDocumentBS :: (ToDocument a) => a -> ByteString
 encodeDocumentBS =
   ByteString.Lazy.toStrict
     . renderLBS def
     . toXmlConduit
     . toDocument
 
-encodeDocumentLBS :: ToDocument a => a -> BL.ByteString
+encodeDocumentLBS :: (ToDocument a) => a -> BL.ByteString
 encodeDocumentLBS =
   renderLBS def
     . toXmlConduit
@@ -143,23 +143,23 @@ encodeDocumentLBS =
 
 newtype ReadShowXmlDocument a = ReadShowXmlDocument a
 
-instance ToDocument a => Show (ReadShowXmlDocument a) where
+instance (ToDocument a) => Show (ReadShowXmlDocument a) where
   show (ReadShowXmlDocument a) =
     Text.Lazy.unpack . renderText (def {rsPretty = True}) . toXmlConduit $ toDocument a
 
-instance FromDocument a => Read (ReadShowXmlDocument a) where
+instance (FromDocument a) => Read (ReadShowXmlDocument a) where
   readsPrec _ str = case decodeDocument (Text.pack str) of
     Right a -> [(ReadShowXmlDocument a, "")]
     Left err -> error err
 
 newtype ReadShowXmlElement a = ReadShowXmlElement a
 
-instance FromElement a => FromDocument (ReadShowXmlElement a) where
+instance (FromElement a) => FromDocument (ReadShowXmlElement a) where
   fromDocument Document {root} = ReadShowXmlElement <$> fromElement root
 
-deriving via ReadShowXmlDocument (ReadShowXmlElement a) instance FromElement a => Read (ReadShowXmlElement a)
+deriving via ReadShowXmlDocument (ReadShowXmlElement a) instance (FromElement a) => Read (ReadShowXmlElement a)
 
-instance ToElement a => Show (ReadShowXmlElement a) where
+instance (ToElement a) => Show (ReadShowXmlElement a) where
   show (ReadShowXmlElement a) =
     Text.Lazy.unpack . renderText (def {rsPretty = True, rsXMLDeclaration = False}) $
       toXmlConduit

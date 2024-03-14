@@ -1,8 +1,10 @@
 module Data.XML.Parse.Types
   ( Parser,
+    orParsers,
     ParserError (..),
     parserError,
     prettyParserError,
+    prettyLastParserError,
     prettyParserErrorWithCallStack,
     FromDocument (..),
     fromRootElement,
@@ -19,6 +21,8 @@ where
 
 import Control.Exception (Exception)
 import Data.Decimal
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
@@ -37,8 +41,15 @@ data ParserError i = ParserError
   deriving stock (Show)
   deriving anyclass (Exception)
 
-parserError :: (HasCallStack) => i -> String -> ParserError i
-parserError info message = ParserError {callstack = callStack, ..}
+parserError :: (HasCallStack) => i -> String -> NonEmpty (ParserError i)
+parserError info message =
+  NonEmpty.singleton ParserError {callstack = callStack, ..}
+
+-- Print only the last parser error, i.e. the one where the parser got the
+-- farthest before failing.
+prettyLastParserError :: NonEmpty (ParserError Location) -> String
+prettyLastParserError =
+  prettyParserError . NonEmpty.head . NonEmpty.sortWith (\ParserError {info} -> info)
 
 prettyParserError :: ParserError Location -> String
 prettyParserError ParserError {..} =
@@ -52,8 +63,15 @@ prettyParserErrorWithCallStack :: ParserError Location -> String
 prettyParserErrorWithCallStack err@ParserError {callstack} =
   prettyParserError err <> prettyCallStack callstack
 
--- todo: NonEmpty (ParserError i)?
-type Parser i a = Either (ParserError i) a
+type Parser i a = Either (NonEmpty (ParserError i)) a
+
+-- If we newtype wrapped Parser this could be an Alternative instance instead.
+orParsers :: Parser i a -> Parser i a -> Parser i a
+orParsers p1 p2 = case p1 of
+  Right a -> Right a
+  Left err1 -> case p2 of
+    Right a -> Right a
+    Left err2 -> Left (err1 <> err2)
 
 class FromDocument a where
   fromDocument :: (HasCallStack) => AnnotatedDocument i -> Parser i a

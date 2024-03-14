@@ -34,13 +34,14 @@ import Data.XML
 import Data.XML.Parse.Types
 import Data.XML.Types
 import GHC.Stack
+import Data.List.NonEmpty (NonEmpty)
 
 {-
 To be able to newtype derive FromChoiceElement we need the `a` parameter to be
 `representational`, but with the following definition we get `nominal` instead.
 -}
-newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
-  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
+newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (NonEmpty (ParserError i))) a)
+  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty (ParserError i)), MonadState (AnnotatedElement i))
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.

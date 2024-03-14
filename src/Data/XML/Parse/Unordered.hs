@@ -26,6 +26,7 @@ where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML
@@ -34,8 +35,8 @@ import Data.XML.Types
 import GHC.Stack
 
 -- Quadratic behaviour in number of children. Could be improved, but probably not an issue.
-newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (ParserError i)) a)
-  deriving newtype (Functor, Applicative, Monad, MonadError (ParserError i), MonadState (AnnotatedElement i))
+newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (NonEmpty (ParserError i))) a)
+  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty (ParserError i)), MonadState (AnnotatedElement i))
 
 -- | Parse an 'ordered' element (corresponding to an xml 'sequence'). Fails if
 -- the element is not fully consumed.
@@ -111,23 +112,6 @@ consumeElements name = do
     Nothing -> pure []
     Just a -> (a :) <$> consumeElements name
 
-{-
-consumeChoiceElement :: forall a i. (HasCallStack, FromChoiceElement a) => UnorderedM i a
-consumeChoiceElement = do
-  remaining@Element {children, info} <- get
-  let go _ [] =
-        throwError . parserError info $
-          "Missing choice node (one of): "
-            <> (intercalate ", " . map renderName . Map.keys $ fromChoiceElement @a)
-      go skipped (node : rest) = case node of
-        NodeElement name el _
-          | Just p <- Map.lookup name fromChoiceElement -> do
-            a <- UnorderedM . lift $ p el
-            put $ remaining {children = reverse skipped <> rest}
-            pure a
-        _ -> go (node : skipped) rest
-  go [] children
--}
 consumeRemainingElements :: (HasCallStack) => UnorderedM i [(Name, AnnotatedElement i)]
 consumeRemainingElements = do
   remaining@Element {children} <- get

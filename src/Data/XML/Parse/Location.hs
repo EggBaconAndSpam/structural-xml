@@ -12,8 +12,24 @@ import qualified Data.Map.Strict as Map
 import Data.XML.Types
 
 data Step = EnterElement Name | SkipContent | SkipElement Name
+  deriving stock (Eq)
 
 newtype Location = Location {reversedPath :: [Step]}
+  deriving newtype (Eq)
+
+-- Note that this instance is only well-behaved on locations from the same
+-- document, i.e. loc1 <= loc2 returns nonsense (and isn't transitive or
+-- antisymmetric) if they are from different documents.
+instance Ord Location where
+  loc1 <= loc2 = go (reversedPath loc1) (reversedPath loc2)
+    where
+      go :: [Step] -> [Step] -> Bool
+      go [] [] = True
+      go (EnterElement _ : _) (SkipElement _ : _) = True
+      go (EnterElement _ : s1) (EnterElement _ : s2) = go s1 s2
+      go (SkipContent : s1) (SkipContent : s2) = go s1 s2
+      go (SkipElement _ : s1) (SkipElement _ : s2) = go s1 s2
+      go _ _ = False
 
 annotateDocument :: Document -> AnnotatedDocument Location
 annotateDocument Document {..} =

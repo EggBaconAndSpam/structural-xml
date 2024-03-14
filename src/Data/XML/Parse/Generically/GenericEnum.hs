@@ -9,8 +9,10 @@
 module Data.XML.Parse.Generically.GenericEnum where
 
 import Data.Kind
+import Data.List (intercalate)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Typeable
 import Data.XML
 import Data.XML.Parse.Generically.Names
 import qualified GHC.Generics as GHC
@@ -48,7 +50,7 @@ class GenericParseEnum (a :: Type) (info :: DatatypeInfo) (code :: [[Type]]) whe
   genericParseEnum' :: Text -> i -> Parser i (SOP I code)
 
 class GenericParseEnum' (a :: Type) (constructors :: [ConstructorInfo]) (code :: [[Type]]) where
-  genericParseEnum'' :: Text -> i -> Parser i (NS (NP I) code)
+  genericParseEnum'' :: Text -> i -> Either [String] (NS (NP I) code)
 
 class GenericUnparseEnum (a :: Type) (info :: DatatypeInfo) (code :: [[Type]]) where
   genericUnparseEnum' :: SOP I code -> Text
@@ -60,7 +62,11 @@ instance
   (GenericParseEnum' a constructors code) =>
   GenericParseEnum a ('ADT _m _d constructors _s) code
   where
-  genericParseEnum' t i = SOP <$> genericParseEnum'' @a @constructors @code t i
+  genericParseEnum' t i = case genericParseEnum'' @a @constructors @code t i of
+    Right a -> pure $ SOP a
+    Left tags ->
+      Left . parserError i $
+        "Content \"" <> T.unpack t <> "\" didn't match any of the expected values " <> intercalate "|" tags
 
 instance
   ( MapNamesToXML a,
@@ -70,14 +76,16 @@ instance
   GenericParseEnum' a ('Constructor name ': constructors) ('[] ': codes)
   where
   genericParseEnum'' t i =
-    if t == T.pack (mapNameToEnum @a @name)
-      then pure $ Z Nil
-      else case genericParseEnum'' @a @constructors @codes t i of
-        Right x -> pure $ S x
-        Left err -> Left err {message = message err <> " | enum value " <> mapNameToEnum @a @name}
+    let tag = mapNameToEnum @a @name
+     in if t == T.pack tag
+          then pure $ Z Nil
+          else case genericParseEnum'' @a @constructors @codes t i of
+            Right x -> pure $ S x
+            Left tags -> Left $ tag : tags
 
 instance
   ( FromContent code,
+    Typeable code,
     GenericParseEnum' a constructors codes
   ) =>
   GenericParseEnum' a (_c ': constructors) ('[code] ': codes)
@@ -85,12 +93,12 @@ instance
   genericParseEnum'' t i =
     case fromContent t i of
       Right a -> pure $ Z (I a :* Nil)
-      Left err -> case genericParseEnum'' @a @constructors @codes t i of
+      Left _err -> case genericParseEnum'' @a @constructors @codes t i of
         Right a -> pure $ S a
-        Left err2 -> Left err2 {message = message err <> " | " <> message err2}
+        Left tags -> Left $ "<" <> show (typeRep (Proxy @code)) <> ">" : tags
 
 instance GenericParseEnum' a '[] '[] where
-  genericParseEnum'' _ i = Left $ parserError i "Could not parse enum, no constructor matched."
+  genericParseEnum'' _ _ = Left []
 
 genericUnparseEnum ::
   forall a.

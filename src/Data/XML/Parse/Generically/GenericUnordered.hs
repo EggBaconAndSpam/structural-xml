@@ -76,8 +76,9 @@ instance
   GenericParseUnordered' a ('Record _c fields ': constructors) (code ': codes)
   where
   genericParseUnordered'' el =
-    (S <$> genericParseUnordered'' @a @constructors @codes el)
-      <> (Z <$> parseUnorderedElement (genericParseUnordered''' @a @fields @code) el)
+    orParsers
+      (Z <$> parseUnorderedElement (genericParseUnordered''' @a @fields @code) el)
+      (S <$> genericParseUnordered'' @a @constructors @codes el)
 
 instance
   ( GenericParseUnorderedField a field (ClassifyFieldLabel field) code,
