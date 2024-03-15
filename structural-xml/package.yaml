@@ -14,7 +14,6 @@ dependencies:
 - mtl
 - bytestring
 - Decimal
-- time
 
 default-extensions:
 - DeriveGeneric

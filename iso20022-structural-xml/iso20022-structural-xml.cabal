@@ -16,8 +16,11 @@ build-type:     Simple
 
 library
   exposed-modules:
-      Data.XML.BoundedList
       Data.XML.Camt53
+      Data.XML.ISO20022.DerivingViaHelpers
+      Data.XML.ISO20022.NameMangling
+      Data.XML.ISO20022.Restricted
+      Data.XML.ISO20022.Types
       Data.XML.XSD2
       Test
   other-modules:
@@ -42,6 +45,7 @@ library
       DuplicateRecordFields
       FlexibleInstances
       NamedFieldPuns
+      UndecidableInstances
   ghc-options: -Weverything -Wno-missing-import-lists -Wno-implicit-prelude -Wno-unsafe -Wno-missing-kind-signatures -Wno-safe -Wno-missing-local-signatures -Wno-missing-safe-haskell-mode -Wno-prepositive-qualified-module -Wno-all-missed-specialisations
   build-depends:
       Decimal

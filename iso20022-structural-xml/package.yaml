@@ -40,6 +40,7 @@ default-extensions:
 - DuplicateRecordFields
 - FlexibleInstances
 - NamedFieldPuns
+- UndecidableInstances
 
 ghc-options:
 - -Weverything

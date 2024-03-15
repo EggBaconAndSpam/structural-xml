@@ -4,9 +4,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Data.XML.BoundedList where
+module Data.XML.ISO20022.Restricted where
 
 import Control.Monad
+import Control.Monad.Except
+import Control.Monad.State
 import Data.Decimal
 import Data.Kind
 import Data.Proxy
@@ -21,8 +23,6 @@ import GHC.TypeLits
 import Generics.SOP.Type.Metadata
 import qualified Text.Regex.TDFA as Regex
 import qualified Text.Regex.TDFA.Text as Regex
-import Control.Monad.State
-import Control.Monad.Except
 
 data Restriction
   = FractionDigits Nat

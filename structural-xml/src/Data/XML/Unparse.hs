@@ -25,8 +25,6 @@ import Data.Decimal
 import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Time
-import Data.Time.Format.ISO8601
 import Data.XML.Types
 import Text.XML (Name)
 
@@ -118,12 +116,6 @@ instance ToElement Leftovers where
 instance ToContent Text where
   toContent = id
 
-instance ToContent UTCTime where
-  toContent = Text.pack . iso8601Show
-
-instance ToContent Day where
-  toContent = Text.pack . show
-
 instance ToContent Int where
   toContent = Text.pack . show
 
@@ -138,16 +130,6 @@ instance (ToContent a) => ToElement (ContentElement a) where
 deriving via ContentElement Text instance ToElement Text
 
 deriving via ContentElement Int instance ToElement Int
-
-deriving via ContentElement Day instance ToElement Day
-
-deriving via ContentElement UTCTime instance ToElement UTCTime
-
-instance ToContent Bool where
-  toContent True = "true"
-  toContent False = "false"
-
-deriving via ContentElement Bool instance ToElement Bool
 
 instance ToContent Decimal where
   toContent = Text.pack . show

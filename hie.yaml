@@ -1,7 +1,7 @@
 cradle:
   stack:
-    - path: "./iso20022/src"
-      component: "iso20022:lib"
+    - path: "./iso20022-structural-xml/src"
+      component: "iso20022-structural-xml:lib"
 
     - path: "./structural-xml/src"
       component: "structural-xml:lib"

@@ -25,8 +25,6 @@ import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Time
-import Data.Time.Format.ISO8601
 import Data.XML.Parse.Location
 import Data.XML.Types
 import GHC.Stack
@@ -145,29 +143,6 @@ instance FromContent Text where
 
 instance FromContent Int where
   fromContent = readContent
-
-instance FromContent UTCTime where
-  fromContent t i = case iso8601ParseM $ Text.unpack t of
-    Nothing -> Left . parserError i $ "Not a valid timestamp in ISO8601 format: " <> Text.unpack t
-    Just u -> pure $ zonedTimeToUTC u
-
-deriving via ContentElement UTCTime instance FromElement UTCTime
-
-instance FromContent Day where
-  fromContent = readContent
-
-deriving via ContentElement Day instance FromElement Day
-
-instance FromContent Bool where
-  fromContent "true" _ = pure True
-  fromContent "false" _ = pure False
-  fromContent t i =
-    Left . parserError i $
-      "Failed to read \""
-        <> Text.unpack t
-        <> "\" as boolean"
-
-deriving via ContentElement Bool instance FromElement Bool
 
 instance FromElement Element where
   fromElement = pure . unAnnotateElement
