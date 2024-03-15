@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.Names
+module Data.XML.Generic.Names
   ( mapNameToElement,
     mapNameToAttribute,
     mapNameToEnum,

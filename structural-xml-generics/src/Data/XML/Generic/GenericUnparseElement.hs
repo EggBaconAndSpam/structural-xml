@@ -7,14 +7,13 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericUnparseElement where
+module Data.XML.Generic.GenericUnparseElement where
 
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as Map
 import Data.XML
-import Data.XML.BoundedList
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.Names
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
 import Generics.SOP.BasicFunctors
@@ -147,9 +146,3 @@ instance
             (\code -> NodeElement (mapNameToElement @a @field) (toElement code) ())
             xs
       }
-
-instance
-  (GenericUnparseField a ('FieldInfo field) 'ElementClass code) =>
-  GenericUnparseField a ('FieldInfo field) 'ElementClass (Restricted rs code)
-  where
-  genericUnparseField (Restricted a) = genericUnparseField @a @('FieldInfo field) @'ElementClass a

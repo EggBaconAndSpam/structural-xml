@@ -13,9 +13,16 @@ import Data.Proxy
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.XML
+import Data.XML.Generic.GenericOrdered
+import Data.XML.Generic.GenericUnordered
+import Data.XML.Generic.GenericUnparseElement
+import Data.XML.Generic.Names
 import GHC.TypeLits
+import Generics.SOP.Type.Metadata
 import qualified Text.Regex.TDFA as Regex
 import qualified Text.Regex.TDFA.Text as Regex
+import Control.Monad.State
+import Control.Monad.Except
 
 data Restriction
   = FractionDigits Nat
@@ -24,6 +31,41 @@ data Restriction
   | MinInclusive Nat
   | MinLength Nat
   | MaxLength Nat
+
+instance
+  ( MkRestricted rs code,
+    GenericParseOrderedField a ('FieldInfo field) 'ElementClass code
+  ) =>
+  GenericParseOrderedField (a :: Type) ('FieldInfo field) 'ElementClass (Restricted rs code)
+  where
+  genericParseOrderedField = do
+    a <- genericParseOrderedField @a @('FieldInfo field) @'ElementClass @code
+    case mkRestricted a of
+      Right b -> pure b
+      Left err -> do
+        Element {info} <- get
+        throwError $ parserError info err
+
+instance
+  {-# OVERLAPPING #-}
+  ( MkRestricted rs code,
+    GenericParseUnorderedField a ('FieldInfo field) 'ElementClass code
+  ) =>
+  GenericParseUnorderedField (a :: Type) ('FieldInfo field) 'ElementClass (Restricted rs code)
+  where
+  genericParseUnorderedField = do
+    a <- genericParseUnorderedField @a @('FieldInfo field) @'ElementClass @code
+    case mkRestricted a of
+      Right b -> pure b
+      Left err -> do
+        Element {info} <- get
+        throwError $ parserError info err
+
+instance
+  (GenericUnparseField a ('FieldInfo field) 'ElementClass code) =>
+  GenericUnparseField a ('FieldInfo field) 'ElementClass (Restricted rs code)
+  where
+  genericUnparseField (Restricted a) = genericUnparseField @a @('FieldInfo field) @'ElementClass a
 
 newtype Restricted (r :: [Restriction]) a = Restricted a
   deriving newtype (ToContent, ToElement, Eq, Ord, Show)

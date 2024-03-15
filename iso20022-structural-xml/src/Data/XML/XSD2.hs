@@ -7,7 +7,7 @@ import Data.Char (toLower)
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.XML hiding (Element)
-import Data.XML.Parse.Generic
+import Data.XML.Generic
 import GHC.Generics (Generic)
 import Optics
 

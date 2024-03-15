@@ -1,4 +1,3 @@
--- todo: try out overlappable instead of overlapping
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
@@ -7,14 +6,14 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericContent where
+module Data.XML.Generic.GenericContent where
 
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Kind
 import Data.XML
-import Data.XML.Parse.Generically.GenericUnparseElement
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.GenericUnparseElement
+import Data.XML.Generic.Names
 import Data.XML.Parse.Ordered
 import qualified GHC.Generics as GHC
 import GHC.TypeLits

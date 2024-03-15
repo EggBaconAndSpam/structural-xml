@@ -6,16 +6,15 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericOrdered where
+module Data.XML.Generic.GenericOrdered where
 
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.XML
-import Data.XML.BoundedList
-import Data.XML.Parse.Generically.GenericUnparseElement
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.GenericUnparseElement
+import Data.XML.Generic.Names
 import Data.XML.Parse.Ordered
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
@@ -123,20 +122,6 @@ instance
   where
   genericParseOrderedField =
     consumeElements (mapNameToElement @a @field)
-
-instance
-  ( MkRestricted rs code,
-    GenericParseOrderedField a ('FieldInfo field) 'ElementClass code
-  ) =>
-  GenericParseOrderedField (a :: Type) ('FieldInfo field) 'ElementClass (Restricted rs code)
-  where
-  genericParseOrderedField = do
-    a <- genericParseOrderedField @a @('FieldInfo field) @'ElementClass @code
-    case mkRestricted a of
-      Right b -> pure b
-      Left err -> do
-        Element {info} <- get
-        throwError $ parserError info err
 
 instance
   ( MapNamesToXML a,

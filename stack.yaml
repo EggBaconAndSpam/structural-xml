@@ -1,5 +1,7 @@
 resolver: lts-22.12
 
 packages:
-  - ./.
+  - ./structural-xml
+  - ./structural-xml-generics
+  - ./iso20022-structural-xml
 

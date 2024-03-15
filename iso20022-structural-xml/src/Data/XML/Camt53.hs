@@ -28,7 +28,7 @@ import Data.Time
 import Data.Tuple (swap)
 import Data.XML (Leftovers, ReadShowXmlElement (..), decodeDocument)
 import Data.XML.BoundedList
-import Data.XML.Parse.Generic
+import Data.XML.Generic
 import Data.XML.Parse.Types
 import qualified Data.XML.Types as XML
 import Data.XML.Unparse hiding (Name)

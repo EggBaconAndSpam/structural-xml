@@ -6,11 +6,11 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericDocument where
+module Data.XML.Generic.GenericDocument where
 
 import Data.Kind
 import Data.XML
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.Names
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
 import Generics.SOP.BasicFunctors

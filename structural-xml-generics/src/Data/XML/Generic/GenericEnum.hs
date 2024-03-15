@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericEnum where
+module Data.XML.Generic.GenericEnum where
 
 import Data.Kind
 import Data.List (intercalate)
@@ -14,7 +14,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Typeable
 import Data.XML
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.Names
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
 import Generics.SOP.BasicFunctors

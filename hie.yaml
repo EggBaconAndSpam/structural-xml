@@ -1,4 +1,10 @@
 cradle:
   stack:
-    - path: "././src"
+    - path: "./iso20022/src"
+      component: "iso20022:lib"
+
+    - path: "./structural-xml/src"
       component: "structural-xml:lib"
+
+    - path: "./structural-xml-generics/src"
+      component: "structural-xml-generics:lib"

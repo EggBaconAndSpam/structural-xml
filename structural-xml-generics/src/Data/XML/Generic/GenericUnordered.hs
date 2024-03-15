@@ -5,16 +5,15 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.XML.Parse.Generically.GenericUnordered where
+module Data.XML.Generic.GenericUnordered where
 
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.XML
-import Data.XML.BoundedList
-import Data.XML.Parse.Generically.GenericUnparseElement
-import Data.XML.Parse.Generically.Names
+import Data.XML.Generic.GenericUnparseElement
+import Data.XML.Generic.Names
 import Data.XML.Parse.Unordered
 import qualified GHC.Generics as GHC
 import GHC.TypeLits
@@ -123,21 +122,6 @@ instance
   where
   genericParseUnorderedField =
     consumeElements (mapNameToElement @a @field)
-
-instance
-  {-# OVERLAPPING #-}
-  ( MkRestricted rs code,
-    GenericParseUnorderedField a ('FieldInfo field) 'ElementClass code
-  ) =>
-  GenericParseUnorderedField (a :: Type) ('FieldInfo field) 'ElementClass (Restricted rs code)
-  where
-  genericParseUnorderedField = do
-    a <- genericParseUnorderedField @a @('FieldInfo field) @'ElementClass @code
-    case mkRestricted a of
-      Right b -> pure b
-      Left err -> do
-        Element {info} <- get
-        throwError $ parserError info err
 
 instance
   {-# OVERLAPPING #-}

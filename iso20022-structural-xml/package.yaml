@@ -1,0 +1,57 @@
+name:                iso20022-structural-xml
+version:             0.2.0.2
+description:         Parsers for ISO20022 XML formats
+license:             BSD3
+license-file:        LICENSE
+copyright:           (c) 2023 Frederik Ramcke, Eir Försäkring AB
+author:              Frederik Ramcke <frederikramcke@mailbox.org>
+
+dependencies:
+- base >= 4.7 && < 5
+- containers
+- text
+- xml-conduit
+- mtl
+- bytestring
+- generics-sop
+- template-haskell
+- optics
+- Decimal
+- time
+- regex-tdfa
+- structural-xml
+- structural-xml-generics
+
+default-extensions:
+- DeriveGeneric
+- DeriveAnyClass
+- DerivingStrategies
+- DerivingVia
+- FlexibleContexts
+- GeneralizedNewtypeDeriving
+- LambdaCase
+- OverloadedStrings
+- RankNTypes
+- ScopedTypeVariables
+- StandaloneDeriving
+- TypeApplications
+- RecordWildCards
+- StrictData
+- DuplicateRecordFields
+- FlexibleInstances
+- NamedFieldPuns
+
+ghc-options:
+- -Weverything
+- -Wno-missing-import-lists
+- -Wno-implicit-prelude
+- -Wno-unsafe
+- -Wno-missing-kind-signatures
+- -Wno-safe
+- -Wno-missing-local-signatures
+- -Wno-missing-safe-haskell-mode
+- -Wno-prepositive-qualified-module
+- -Wno-all-missed-specialisations
+library:
+  source-dirs: src
+
