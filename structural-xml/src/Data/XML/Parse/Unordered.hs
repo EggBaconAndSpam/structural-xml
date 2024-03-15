@@ -43,7 +43,7 @@ newtype UnorderedM i a = UnorderedM (StateT (AnnotatedElement i) (Either (NonEmp
 parseUnorderedElement :: (HasCallStack) => UnorderedM i a -> AnnotatedElement i -> Parser i a
 parseUnorderedElement p el@Element {info} = do
   (el', a) <- parseUnorderedElementKeepLeftovers p el
-  if isEmptyElement el'
+  if isElementFullyConsumed el'
     then pure a
     else
       throwError

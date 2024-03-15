@@ -16,6 +16,7 @@ module Data.XML.Parse.Types
     parseContentElement,
     parseContentElementPartially,
     parseContentElementKeepLeftovers,
+    isElementFullyConsumed,
   )
 where
 
@@ -23,6 +24,9 @@ import Control.Exception (Exception)
 import Data.Decimal
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.XML.Parse.Location
@@ -199,3 +203,25 @@ parseContentElementPartially p el =
 
 newtype AnyElement = AnyElement (Name, Element)
   deriving stock (Eq, Ord, Show)
+
+{-
+We drop attributes with these names when checking if all attributes have been
+consumed due to the following clause in the xml schema specification:
+
+3.1.1 The element information item's [attributes] must be empty, excepting those
+whose [namespace name] is identical to http://www.w3.org/2001/XMLSchema-instance
+and whose [local name] is one of type, nil, schemaLocation or
+noNamespaceSchemaLocation.
+-}
+xsiAttributeNames :: Set Name
+xsiAttributeNames =
+  Set.fromList
+    [ "{http://www.w3.org/2001/XMLSchema-instance}type",
+      "{http://www.w3.org/2001/XMLSchema-instance}nil",
+      "{http://www.w3.org/2001/XMLSchema-instance}schemaLocation",
+      "{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation"
+    ]
+
+isElementFullyConsumed :: AnnotatedElement i -> Bool
+isElementFullyConsumed el =
+  isEmptyElement (el {attributes = attributes el `Map.withoutKeys` xsiAttributeNames})

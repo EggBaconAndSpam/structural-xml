@@ -46,7 +46,7 @@ newtype OrderedM i a = OrderedM (StateT (AnnotatedElement i) (Either (NonEmpty (
 parseOrderedElement :: (HasCallStack) => OrderedM i a -> AnnotatedElement i -> Parser i a
 parseOrderedElement p el@Element {info} = do
   (el', a) <- parseOrderedElementKeepLeftovers p el
-  if isEmptyElement el'
+  if isElementFullyConsumed el'
     then pure a
     else
       throwError
