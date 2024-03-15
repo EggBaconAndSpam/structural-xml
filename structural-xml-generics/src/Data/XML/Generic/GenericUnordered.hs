@@ -1,14 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module Data.XML.Generic.GenericUnordered where
 
-import Control.Monad.Except
-import Control.Monad.State
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.XML

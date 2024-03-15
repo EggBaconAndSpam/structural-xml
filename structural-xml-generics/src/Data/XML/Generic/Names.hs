@@ -1,8 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module Data.XML.Generic.Names
   ( mapNameToElement,
     mapNameToAttribute,

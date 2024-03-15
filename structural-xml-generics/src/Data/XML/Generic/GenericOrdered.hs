@@ -1,15 +1,5 @@
--- TODO: better errors for unions
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module Data.XML.Generic.GenericOrdered where
 
-import Control.Monad.Except
-import Control.Monad.State
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.XML

@@ -10,15 +10,8 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 - text
-- xml-conduit
 - mtl
-- bytestring
 - generics-sop
-- template-haskell
-- optics
-- Decimal
-- time
-- regex-tdfa
 - structural-xml
 
 default-extensions:
@@ -39,8 +32,16 @@ default-extensions:
 - DuplicateRecordFields
 - FlexibleInstances
 - NamedFieldPuns
+- DataKinds
+- EmptyCase
+- TypeFamilies
+- TypeOperators
+- UndecidableInstances
+- AllowAmbiguousTypes
+- MultiParamTypeClasses
 
 ghc-options:
+- -Werror
 - -Weverything
 - -Wno-missing-import-lists
 - -Wno-implicit-prelude
@@ -51,6 +52,7 @@ ghc-options:
 - -Wno-missing-safe-haskell-mode
 - -Wno-prepositive-qualified-module
 - -Wno-all-missed-specialisations
+- -Wno-missing-export-lists
 library:
   source-dirs: src
 

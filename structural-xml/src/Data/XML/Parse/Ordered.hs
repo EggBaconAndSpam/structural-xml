@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RoleAnnotations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Data.XML.Parse.Ordered
@@ -28,13 +26,13 @@ where
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.State.Strict
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
 import Data.XML
 import Data.XML.Parse.Types
 import Data.XML.Types
 import GHC.Stack
-import Data.List.NonEmpty (NonEmpty)
 
 {-
 To be able to newtype derive FromChoiceElement we need the `a` parameter to be

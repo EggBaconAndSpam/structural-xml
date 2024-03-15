@@ -13,12 +13,8 @@ dependencies:
 - xml-conduit
 - mtl
 - bytestring
-- generics-sop
-- template-haskell
-- optics
 - Decimal
 - time
-- regex-tdfa
 
 default-extensions:
 - DeriveGeneric
@@ -40,6 +36,7 @@ default-extensions:
 - NamedFieldPuns
 
 ghc-options:
+- -Werror
 - -Weverything
 - -Wno-missing-import-lists
 - -Wno-implicit-prelude
