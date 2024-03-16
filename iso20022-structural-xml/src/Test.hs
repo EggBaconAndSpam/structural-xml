@@ -12,7 +12,9 @@ import Data.Text (Text)
 import Data.Time
 import Data.XML hiding (Document)
 import Data.XML.Camt53
+import Data.XML.ISO20022.DerivingViaHelpers
 import Data.XML.ISO20022.Restricted
+import Data.XML.ISO20022.Types
 import GHC.Generics
 
 $(qCamt53Schema)
