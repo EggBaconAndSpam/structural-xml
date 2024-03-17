@@ -17,7 +17,7 @@ import Data.XML.ISO20022.Restricted
 import Data.XML.ISO20022.Types
 import GHC.Generics
 
-$(qCamt53Schema)
+$(deriveTypesFromIso20022Schema "/home/frederikramcke/Documents/structural-xml/camt.053.001.02.xsd")
 
 {-
 data DocumentRoot

@@ -59,10 +59,10 @@ unmangledElementName t =
         | i : _ <- uname, isUpper i -> mkName $ "elem_" <> uname
         | otherwise -> mkName uname
 
-qCamt53Schema :: Q [Dec]
-qCamt53Schema = do
-  camt53xsd <- runIO $ Text.readFile "/home/frederikramcke/Documents/structural-xml/camt.053.001.02.xsd"
-  case decodeDocument camt53xsd of
+deriveTypesFromIso20022Schema :: FilePath -> Q [Dec]
+deriveTypesFromIso20022Schema xsdPath = do
+  schemaXsd <- runIO $ Text.readFile xsdPath
+  case decodeDocument schemaXsd of
     Left err -> error err
     Right SchemaDoc {schema} -> reifySchema schema
 
