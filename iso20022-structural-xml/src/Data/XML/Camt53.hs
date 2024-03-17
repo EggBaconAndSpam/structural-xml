@@ -13,22 +13,21 @@ module Data.XML.Camt53 where
 
 import Control.Applicative
 import Control.Monad
-import Data.Char (isUpper)
+import Data.Char (isUpper, toUpper)
 import Data.Decimal
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import Data.Time
 import Data.XML (Leftovers, ReadShowXmlElement (..), decodeDocument)
 import Data.XML.ISO20022.DerivingViaHelpers
 import Data.XML.ISO20022.NameMangling
 import Data.XML.ISO20022.Restricted
 import Data.XML.Parse.Types
 import Data.XML.Unparse hiding (Name)
-import Data.XML.XSD2
-import qualified Data.XML.XSD2 as Xsd
+import Data.XML.XSD
+import qualified Data.XML.XSD as Xsd
 import GHC.Generics (Generic)
 import Language.Haskell.TH
 import Optics
@@ -52,18 +51,6 @@ noBang = Bang NoSourceUnpackedness NoSourceStrictness
 mkName' :: Text -> Name
 mkName' = mkName . Text.unpack
 
-{-
-todo: drop xsi attributes?
-xsi:schemaLocation="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02
-  camt.053.001.02.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance
-
-For each attribute information item in the element information item's
-[attributes] excepting those whose [namespace name] is identical to
-http://www.w3.org/2001/XMLSchema-instance and whose [local name] is one of type,
-nil, schemaLocation or noNamespaceSchemaLocation, the appropriate case among the
-following must be true:
-  -}
-
 unmangledElementName :: Text -> Name
 unmangledElementName t =
   let uname = unmangleName $ Text.unpack t
@@ -81,26 +68,37 @@ qCamt53Schema = do
 
 reifySchema :: Schema -> Q [Dec]
 reifySchema s = do
-  let [documentRoot] = s ^. #element
+  documentRoot <- case s ^. #element of
+    [r] -> pure r
+    _ -> error "unhandled: more than one root"
   let mangledNames = schemaElementNames s
   unless (all (\n -> let n' = Text.unpack n in mangleName (unmangleName n') == n') mangledNames) $
     error "mangling is wrong!"
   simpleTypeDecs <- fmap concat . mapM reifySimpleType $ s ^. #simpleType
   complexTypeDecs <- fmap concat . mapM reifyComplexType $ s ^. #complexType
-  pure $ schema_document documentRoot : simpleTypeDecs <> complexTypeDecs
+  pure $ schema_document (rootTypeName s) documentRoot : simpleTypeDecs <> complexTypeDecs
 
-schema_document :: Element -> Dec
-schema_document e =
-  let typeName = mkName "DocumentRoot"
-   in DataD
-        []
-        typeName
-        []
-        Nothing
-        [RecC typeName [(mkName' $ "elem_" <> e ^. #attr_name, noBang, elementType e)]]
-        [ DerivClause (Just StockStrategy) [ConT ''Generic],
-          DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Document) (ConT typeName))) [ConT ''FromDocument, ConT ''ToDocument]
-        ]
+rootTypeName :: Schema -> Name
+rootTypeName s = fromMaybe (error "Could not build document root name from targetNamespace") $ do
+  x <- Text.stripPrefix "urn:iso:std:iso:20022:tech:xsd:" $ s ^. #attr_targetNamespace
+  [nam, index, "001", version] <- pure $ Text.splitOn "." x
+  pure . mkName' $ capitalise nam <> Text.dropWhile (== '0') index <> "Version" <> version <> "Document"
+  where
+    capitalise t = case Text.uncons t of
+      Nothing -> t
+      Just (i, rest) -> Text.cons (toUpper i) rest
+
+schema_document :: Name -> Element -> Dec
+schema_document typeName e =
+  DataD
+    []
+    typeName
+    []
+    Nothing
+    [RecC typeName [(mkName' $ "elem_" <> e ^. #attr_name, noBang, elementType e)]]
+    [ DerivClause (Just StockStrategy) [ConT ''Generic],
+      DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Document) (ConT typeName))) [ConT ''FromDocument, ConT ''ToDocument]
+    ]
 
 reifySimpleType :: SimpleType -> Q [Dec]
 reifySimpleType st = do

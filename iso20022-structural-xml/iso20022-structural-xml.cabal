@@ -21,7 +21,7 @@ library
       Data.XML.ISO20022.NameMangling
       Data.XML.ISO20022.Restricted
       Data.XML.ISO20022.Types
-      Data.XML.XSD2
+      Data.XML.XSD
       Test
   other-modules:
       Paths_iso20022_structural_xml

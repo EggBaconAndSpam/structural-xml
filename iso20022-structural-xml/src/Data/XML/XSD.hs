@@ -1,7 +1,7 @@
--- Just enough to parse camt.053.001.11.xsd
+-- Just enough to parse camt.053.001.11.xsd and camt.053.001.02
 {-# LANGUAGE OverloadedLabels #-}
 
-module Data.XML.XSD2 where
+module Data.XML.XSD where
 
 import Data.Char (toLower)
 import Data.String (IsString (..))
