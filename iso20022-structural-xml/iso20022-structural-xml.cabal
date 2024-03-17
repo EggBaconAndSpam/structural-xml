@@ -16,7 +16,7 @@ build-type:     Simple
 
 library
   exposed-modules:
-      Data.XML.Camt53
+      Data.XML.ISO20022
       Data.XML.ISO20022.DerivingViaHelpers
       Data.XML.ISO20022.NameMangling
       Data.XML.ISO20022.Restricted

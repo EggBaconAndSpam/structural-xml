@@ -8,31 +8,31 @@ import Data.XML.Generic
 import Data.XML.ISO20022.NameMangling
 import GHC.Generics (Generic)
 
-newtype Camt53Document a = Camt53Document a
+newtype ISO20022Document a = ISO20022Document a
   deriving newtype (Generic)
 
-instance MapNamesToXML (Camt53Document a) where
+instance MapNamesToXML (ISO20022Document a) where
   mapNamesToElements l =
     (fromString l)
       { nameNamespace = Just "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"
       }
 
 instance
-  (FromDocument (GenericDocument (Camt53Document a))) =>
-  FromDocument (Camt53Document a)
+  (FromDocument (GenericDocument (ISO20022Document a))) =>
+  FromDocument (ISO20022Document a)
   where
   fromDocument el = (\(GenericDocument a) -> a) <$> fromDocument el
 
 instance
-  (ToDocument (GenericDocument (Camt53Document a))) =>
-  ToDocument (Camt53Document a)
+  (ToDocument (GenericDocument (ISO20022Document a))) =>
+  ToDocument (ISO20022Document a)
   where
   toDocument = toDocument . GenericDocument
 
-newtype Camt53Element a = Camt53Element a
+newtype ISO20022Element a = ISO20022Element a
   deriving newtype (Generic)
 
-instance MapNamesToXML (Camt53Element a) where
+instance MapNamesToXML (ISO20022Element a) where
   mapNamesToElements l =
     (fromString $ mangleName l)
       { nameNamespace = Just "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"
@@ -47,55 +47,55 @@ instance MapNamesToXML (Camt53Element a) where
     _ -> s
 
 instance
-  (FromElement (GenericOrdered (Camt53Element a))) =>
-  FromElement (Camt53Element a)
+  (FromElement (GenericOrdered (ISO20022Element a))) =>
+  FromElement (ISO20022Element a)
   where
   fromElement el = (\(GenericOrdered a) -> a) <$> fromElement el
 
 instance
-  (ToElement (GenericOrdered (Camt53Element a))) =>
-  ToElement (Camt53Element a)
+  (ToElement (GenericOrdered (ISO20022Element a))) =>
+  ToElement (ISO20022Element a)
   where
   toElement = toElement . GenericOrdered
 
-newtype Camt53Enum a = Camt53Enum a
-  deriving (MapNamesToXML) via Camt53Element a
+newtype ISO20022Enum a = ISO20022Enum a
+  deriving (MapNamesToXML) via ISO20022Element a
   deriving newtype (Generic)
 
 instance
-  (FromContent (GenericEnum (Camt53Enum a))) =>
-  FromContent (Camt53Enum a)
+  (FromContent (GenericEnum (ISO20022Enum a))) =>
+  FromContent (ISO20022Enum a)
   where
   fromContent t i = (\(GenericEnum a) -> a) <$> fromContent t i
 
 instance
-  (ToContent (GenericEnum (Camt53Enum a))) =>
-  ToContent (Camt53Enum a)
+  (ToContent (GenericEnum (ISO20022Enum a))) =>
+  ToContent (ISO20022Enum a)
   where
   toContent = toContent . GenericEnum
 
 deriving via
-  ContentElement (Camt53Enum a)
+  ContentElement (ISO20022Enum a)
   instance
-    (FromContent (Camt53Enum a)) => FromElement (Camt53Enum a)
+    (FromContent (ISO20022Enum a)) => FromElement (ISO20022Enum a)
 
 deriving via
-  ContentElement (Camt53Enum a)
+  ContentElement (ISO20022Enum a)
   instance
-    (ToContent (Camt53Enum a)) => ToElement (Camt53Enum a)
+    (ToContent (ISO20022Enum a)) => ToElement (ISO20022Enum a)
 
-newtype Camt53Content a = Camt53Content a
-  deriving (MapNamesToXML) via Camt53Element a
+newtype ISO20022Content a = ISO20022Content a
+  deriving (MapNamesToXML) via ISO20022Element a
   deriving newtype (Generic)
 
 instance
-  (FromElement (GenericContent (Camt53Content a))) =>
-  FromElement (Camt53Content a)
+  (FromElement (GenericContent (ISO20022Content a))) =>
+  FromElement (ISO20022Content a)
   where
   fromElement el = (\(GenericContent a) -> a) <$> fromElement el
 
 instance
-  (ToElement (GenericContent (Camt53Content a))) =>
-  ToElement (Camt53Content a)
+  (ToElement (GenericContent (ISO20022Content a))) =>
+  ToElement (ISO20022Content a)
   where
   toElement = toElement . GenericContent

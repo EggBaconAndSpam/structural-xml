@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Data.XML.Camt53 where
+module Data.XML.ISO20022 where
 
 import Control.Applicative
 import Control.Monad
@@ -97,7 +97,7 @@ schema_document typeName e =
     Nothing
     [RecC typeName [(mkName' $ "elem_" <> e ^. #attr_name, noBang, elementType e)]]
     [ DerivClause (Just StockStrategy) [ConT ''Generic],
-      DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Document) (ConT typeName))) [ConT ''FromDocument, ConT ''ToDocument]
+      DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Document) (ConT typeName))) [ConT ''FromDocument, ConT ''ToDocument]
     ]
 
 reifySimpleType :: SimpleType -> Q [Dec]
@@ -212,7 +212,7 @@ simpleType_string_enumeration typeName st
               Nothing
               conNames
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Enum) (ConT typeName))) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Enum) (ConT typeName))) [ConT ''FromContent, ConT ''FromElement, ConT ''ToContent, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -294,7 +294,7 @@ complexType_sequence_elements typeName ct
               Nothing
               [RecC typeName (map mkField es)]
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -309,7 +309,7 @@ complexType_sequence_any typeName ct
           Nothing
           [RecC typeName [(mkName "any", noBang, ConT ''Leftovers)]]
           [ DerivClause (Just StockStrategy) [ConT ''Generic],
-            DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+            DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
           ]
   | otherwise = Nothing
 
@@ -330,7 +330,7 @@ complexType_sequence_choice typeName ct
               Nothing
               (map mkConstructor e)
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -350,7 +350,7 @@ complexType_choice typeName ct
               Nothing
               (map mkConstructor e)
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Element) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
 
@@ -372,6 +372,6 @@ complexType_content_extension typeName ct
               Nothing
               [RecC typeName [attributeField, contentField]]
               [ DerivClause (Just StockStrategy) [ConT ''Generic],
-                DerivClause (Just $ ViaStrategy (AppT (ConT ''Camt53Content) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
+                DerivClause (Just $ ViaStrategy (AppT (ConT ''ISO20022Content) (ConT typeName))) [ConT ''FromElement, ConT ''ToElement]
               ]
   | otherwise = Nothing
